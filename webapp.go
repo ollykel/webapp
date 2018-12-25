@@ -114,6 +114,12 @@ func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 	app.mux.HandleFunc(path, handler)
 }//-- end func Webapp.HandleFunc
 
+type AppHandler func(*Webapp) http.HandlerFunc
+
+func (app *Webapp) Register(path string, handler AppHandler) {
+	app.mux.HandleFunc(path, handler(app))
+}//-- end Webapp.Register
+
 func (app *Webapp) PrepareQuery (query string,
 		readRow RowScanner) (SqlQuerier, error) {
 	return app.db.prepareQuery(query, readRow)
