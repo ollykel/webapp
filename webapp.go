@@ -99,7 +99,10 @@ func MakePostHandler (fn PostHandler) func(http.ResponseWriter,
 func ServeJSON(w http.ResponseWriter, r *http.Request, item interface{}) {
 	encoder := json.NewEncoder(w)
 	err := encoder.Encode(item)
-	if err != nil { http.Error(w, r, http.StatusInternalServerError) }
+	if err != nil {
+		http.Error(w, r, http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 }//-- end func ServeJSON
 
