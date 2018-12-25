@@ -13,6 +13,7 @@ import (
 	"strings"
 	"net/http"
 	"context"
+	"encoding/json"
 )
 
 var (
@@ -94,6 +95,13 @@ func MakePostHandler (fn PostHandler) func(http.ResponseWriter,
 		fn(w, r, path)
 	}//-- end return
 }//-- end func MakePostHandler
+
+func ServeJSON(w http.ResponseWriter, r *http.Request, item interface{}) {
+	encoder := json.NewEncoder(w)
+	err := encoder.Encode(item)
+	if err != nil { http.Error(w, r, http.StatusInternalServerError) }
+	w.Header().Set("Content-Type", "application/json")
+}//-- end func ServeJSON
 
 type Webapp struct {
 	server *http.Server//-- use *ServeMux as handler
