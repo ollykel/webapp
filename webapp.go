@@ -8,32 +8,70 @@
 package webapp
 
 import (
-	"os"
-	"errors"
-	"fmt"
-	"time"
-	// "log"
-	"container/list"
+	"log"
+	"io"
 	"strings"
 	"net/http"
+	"context"
 )
+
+var (
+	file_types = map[string]string{
+		"default": "text/plain",
+		"txt": "text/plain",
+		"html": "text/html",
+		"css": "text/css",
+		"js": "application/javascript",
+		"csv": "text/csv",
+		"gif": "image/gif",
+		"ico": "image/x-icon",
+		"jpeg": "image/jpeg",
+		"jpg": "image/jpeg",
+		"json": "application/json",
+		"mpeg": "video/mpeg",
+		"png": "image/png",
+		"pdf": "application/pdf",
+		"svg": "image/svg+xml",
+		"tar": "application/x-tar",
+		"tif": "image/tiff",
+		"tiff": "image/tiff",
+		"wav": "audio/wav",
+		"xhtml": "application/xhtml+xml",
+		"xml": "application/xml",
+		"zip": "application/zip"}//-- end file_types
+)
+
+type DatabaseConfig struct {
+	Driver, Name, User, Password string
+}
 
 type Config struct {
 	Port string
 	Index string
 	StaticDir string
-	Database struct {
-		Driver, Name, User, Password string
-	}
+	Database DatabaseConfig
 	Handlers map[string]http.HandlerFunc
 }//-- end Config struct
+
+func setFileType(filename string) string {
+	path := strings.Split(filename, ".")
+	ext := path[len(path) - 1]
+	fileType, exists := file_types[ext]
+	log.Printf("File type: %s\n", fileType)
+	if !exists { return file_types["default"] }
+	return fileType
+}//-- end func setFileType
 
 func cacheFileServer (filename string) http.HandlerFunc {
 	fcache, err := newFileCache(filename)
 	if err != nil { return http.NotFound }
-	modtime := time.Now()
+	stat, _ := fcache.Stat()
+	modtime := stat.ModTime()
+	fileType := setFileType(filename)
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("cached server: %s\n", r.URL.Path)
 		fcache.Seek(0, io.SeekStart)
+		w.Header().Set("Content-Type", fileType)
 		http.ServeContent(w, r, filename, modtime, fcache)
 	}//-- end return for existing file
 }//-- end func cacheFileServer
@@ -49,77 +87,61 @@ func MakeGetHandler (fn GetHandler) http.HandlerFunc {
 	}//-- end return
 }//-- end func MakeGetHandler
 
-func MakePostHandler (fn PostHandler) {
+func MakePostHandler (fn PostHandler) func(http.ResponseWriter,
+		*http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.Split(r.URL.Path[1:], "/")
 		fn(w, r, path)
 	}//-- end return
 }//-- end func MakePostHandler
 
-type Scannable interface {
-	Scan(dest ...interface{}) error
-}//-- end Scannable interface
-
-type database struct {
-	pool *sql.DB
-	statements map[string]*sql.Stmt
-}//-- end database struct
-
-func initDatabase (driver, name, user, pass string) (*database, error) {
-	dataSource := strings.Join([]string{name, user, pass}, "/")
-	return &database{pool: sql.Open(driver, dataSource),
-		statements: make(map[string]*sql.Stmt)}
-}//-- end func initDatabase
-
-func (db *database) registerQuery (name, query string) error {
-	db.statements[name], err := db.pool.Prepare(query)
-	return err
-}//-- end func database.registerQuery
-
-func (db *database) prepareQuery (query string,
-	readRow func(Scannable) interface{}) func(...interface{}) (*list.List,
-	error) {
-	stmt, err := db.pool.Prepare(query)
-	return func(a ...interface{}) *list.List {
-		if err != nil { return nil, err }
-		rows, err := stmt.Query(a...)
-		if err != nil { return nil, err }
-		results := list.New()
-		for rows.Next() {
-			results.PushBack(readRow(rows))
-		}//-- end for rows.Next
-		return results, nil
-	}//-- end return
-}//-- end database.prepareQuery
-
 type Webapp struct {
 	server *http.Server//-- use *ServeMux as handler
+	mux *http.ServeMux
 	staticCache map[string]([]byte)
 	db *database
 }//-- end Webapp struct
 
 func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
-	filename := r.URL.path
-	app.server.Handler.HandleFunc(filename, cacheFileServer(filename))
+	log.Printf("serveStatic: %s\n", r.URL.Path)
+	filename := r.URL.Path[1:]
+	handler := cacheFileServer(filename)
+	app.mux.HandleFunc(r.URL.Path, handler)
+	handler(w, r)
 }//-- end Webapp.serveStatic
 
+func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
+	app.mux.HandleFunc(path, handler)
+}//-- end func Webapp.HandleFunc
+
+func (app *Webapp) PrepareQuery (query string,
+		readRow RowScanner) (SqlQuerier, error) {
+	return app.db.prepareQuery(query, readRow)
+}//-- end Webapp.PrepareQuery
+
+func (app *Webapp) ListenAndServe() error {
+	log.Printf("Server listening at %s...\n", app.server.Addr)
+	return app.server.ListenAndServe()
+}//-- end func Webapp.ListenAndServe
+
+func (app *Webapp) Shutdown(ctx context.Context) error {
+	return app.server.Shutdown(ctx)
+}//-- end func Webapp.Shutdown
+
 func Init (config *Config) (*Webapp, error) {
+	var err error
 	app := new(Webapp)
-	if err != nil {
-		return nil, err
-	}
 	app.staticCache = make(map[string]([]byte))
-	app.db, err = initDatabase(config.Database.Driver, config.Database.Name,
-		config.Database.User, config.Database.Password)
+	app.db, err = initDatabase(config.Database.Driver,
+		config.Database.Name, config.Database.User,
+		config.Database.Password)
 	if err != nil {
 		return nil, err
 	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, config.Index)
-	})
-	mux.HandleFunc(config.StaticDir, app.serveStatic)
-	app.server = &http.Server{Addr: config.Port, Handler: mux}
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/", cacheFileServer(config.Index))
+	app.mux.HandleFunc(config.StaticDir, app.serveStatic)
+	app.server = &http.Server{Addr: config.Port, Handler: app.mux}
 	return app, nil
 }//-- end func Init
 

@@ -1,15 +1,16 @@
 package webapp
 
 import (
+	"os"
 	"fmt"
 	"errors"
 	"io"
-	"ioutil"
 )
 
 type fileCache struct {
 	cache, seeker []byte
 	length, position int64
+	stat os.FileInfo
 }//-- end fileCache struct
 
 func (fc *fileCache) Read (p []byte) (int, error) {
@@ -25,7 +26,7 @@ func (fc *fileCache) Seek (offset int64, whence int) (int64, error) {
 		case io.SeekCurrent:
 			newPos = fc.position + offset
 			break
-		case io.SeekSet:
+		case io.SeekEnd:
 			newPos = fc.length + offset - 1
 			break
 		default:
@@ -39,12 +40,19 @@ func (fc *fileCache) Seek (offset int64, whence int) (int64, error) {
 	return fc.position, nil
 }//-- end func fileCache.Seek
 
+func (fc *fileCache) Stat () (os.FileInfo, error) {
+	return fc.stat, nil
+}//--end fileCache.Stat
+
 func newFileCache (filename string) (*fileCache, error) {
-	content, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
+	file, err := os.Open(filename)
+	if err != nil { return nil, err }
+	defer file.Close()
+	flen, _ := file.Seek(0, io.SeekEnd)
+	content := make([]byte, int(flen))
+	stat, _ := file.Stat()
+	file.ReadAt(content, 0)
 	return &fileCache{cache: content, seeker: content,
-		length: len(content), position: 0}, nil
+		length: flen, position: int64(0), stat: stat}, nil
 }//-- end func New
 
