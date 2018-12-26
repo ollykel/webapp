@@ -8,6 +8,7 @@
 package webapp
 
 import (
+	"os"
 	"log"
 	"io"
 	"strings"
@@ -53,6 +54,17 @@ type Config struct {
 	Database DatabaseConfig
 	Handlers map[string]http.HandlerFunc
 }//-- end Config struct
+
+func LoadConfig (filename string) (*Config, error) {
+	file, err := os.Open(filename)
+	if err != nil { return nil, err }
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	config := new(Config)
+	err = decoder.Decode(config)
+	if err != nil { return nil, err }
+	return config, nil
+}//-- end func LoadConfig
 
 func setFileType(filename string) string {
 	path := strings.Split(filename, ".")
