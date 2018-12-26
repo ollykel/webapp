@@ -9,12 +9,14 @@ package webapp
 
 import (
 	"os"
+	"fmt"
 	"log"
 	"io"
 	"strings"
 	"net/http"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 )
 
 var (
@@ -55,13 +57,29 @@ type Config struct {
 	Handlers map[string]http.HandlerFunc
 }//-- end Config struct
 
+type decoder interface {
+	Decode (interface{}) error
+}//-- end Decoder interface
+
 func LoadConfig (filename string) (*Config, error) {
 	file, err := os.Open(filename)
 	if err != nil { return nil, err }
 	defer file.Close()
-	decoder := json.NewDecoder(file)
+	path := strings.Split(filename, ".")
+	ext := path[len(path) - 1]
+	var dec decoder
+	switch (ext) {
+		case "json":
+			dec = json.NewDecoder(file)
+			break
+		case "xml":
+			dec = xml.NewDecoder(file)
+			break
+		default:
+			return nil, fmt.Errorf(`Invalid file type "%s"`, ext)
+	}//-- end switch
 	config := new(Config)
-	err = decoder.Decode(config)
+	err = dec.Decode(config)
 	if err != nil { return nil, err }
 	return config, nil
 }//-- end func LoadConfig
