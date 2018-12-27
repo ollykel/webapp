@@ -13,6 +13,7 @@ import (
 	"log"
 	"io"
 	"strings"
+	"container/list"
 	"net/http"
 	"context"
 	"encoding/json"
@@ -140,6 +141,7 @@ func ServeJSON(w http.ResponseWriter, r *http.Request, item interface{}) {
 type Webapp struct {
 	server *http.Server//-- use *ServeMux as handler
 	mux *http.ServeMux
+	middleware *list.List
 	staticCache map[string]([]byte)
 	db *database
 }//-- end Webapp struct
@@ -152,14 +154,38 @@ func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	handler(w, r)
 }//-- end Webapp.serveStatic
 
+type Middleware func(http.ResponseWriter, *http.Request) bool
+
+type MiddlewareBuilder func(*Webapp) Middleware
+
+func (app *Webapp) AddMiddleware(builder MiddlewareBuilder) {
+	mware := builder(app)
+	app.middleware.PushBack(mware)
+}//-- end Webapp.AddMiddleware
+
+func (app *Webapp) handleMiddleware(w http.ResponseWriter,
+		r *http.Request) bool {
+	shouldContinue := true
+	for el := app.middleware.Front(); el != nil; el = el.Next() {
+		shouldContinue = el.Value.(Middleware)(w, r)
+		if !shouldContinue { return false }
+	}//-- end for el
+	return true
+}//-- end Webapp.handleMiddleware
+
 func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
-	app.mux.HandleFunc(path, handler)
+	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if app.handleMiddleware(w, r) { handler(w, r) }
+	})
 }//-- end func Webapp.HandleFunc
 
 type AppHandler func(*Webapp) http.HandlerFunc
 
 func (app *Webapp) Register(path string, handler AppHandler) {
-	app.mux.HandleFunc(path, handler(app))
+	handleFunc := handler(app)
+	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if app.handleMiddleware(w, r) { handleFunc(w, r) }
+	})
 }//-- end Webapp.Register
 
 func (app *Webapp) PrepareQuery (query string,
