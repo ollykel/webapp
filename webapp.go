@@ -212,6 +212,7 @@ func Init (config *Config) (*Webapp, error) {
 	if err != nil {
 		return nil, err
 	}
+	app.middleware = list.New()
 	app.mux = http.NewServeMux()
 	app.mux.HandleFunc("/", cacheFileServer(config.Index))
 	app.mux.HandleFunc(config.StaticDir, app.serveStatic)
