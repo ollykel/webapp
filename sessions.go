@@ -81,7 +81,8 @@ func (sm *SessionManager) Middleware (app *Webapp) Middleware {
 			return false
 		}
 		var name, hash string
-		_, err = fmt.Sscanf(sessionCookie.Value, "%s : %s", &name, &hash)
+		_, err = fmt.Sscanf(sessionCookie.Value, cookie_format,
+			&name, &hash)
 		if err != nil {
 			handleShouldLogin(w, r)
 			return false
@@ -90,13 +91,16 @@ func (sm *SessionManager) Middleware (app *Webapp) Middleware {
 		handleShouldLogin(w, r)
 		return false
 	}//-- end return
-}//-- end func SessionMiddleware
+}//-- end func SessionManager.Middleware
+
+type LoginValidator func(*http.Request) (bool, string)
 
 func (sm *SessionManager) LoginHandler (validator func(
-		app *Webapp) func(*http.Request) (bool, string)) AppHandler {
+		app *Webapp) LoginValidator) AppHandler {
 	return func(app *Webapp) http.HandlerFunc {
 		validateLogin := validator(app)
 		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
 			isValid, key := validateLogin(r)
 			if !isValid {
 				w.Write([]byte(`{"loginSucceeded": false}`))
@@ -109,7 +113,6 @@ func (sm *SessionManager) LoginHandler (validator func(
 				MaxAge: sm.sessionDuration,
 				Secure: true,
 				HttpOnly: true}
-			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"loginSucceeded": true}`))
 			http.SetCookie(w, &sessionCookie)
 		}//-- end return
