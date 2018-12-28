@@ -11,7 +11,8 @@ import (
 	"os"
 	"fmt"
 	"log"
-	"io"
+	// "io"
+	"io/ioutil"
 	"strings"
 	"container/list"
 	"net/http"
@@ -95,16 +96,13 @@ func setFileType(filename string) string {
 }//-- end func setFileType
 
 func cacheFileServer (filename string) http.HandlerFunc {
-	fcache, err := newFileCache(filename)
+	content, err := ioutil.ReadFile(filename)
 	if err != nil { return http.NotFound }
-	stat, _ := fcache.Stat()
-	modtime := stat.ModTime()
 	fileType := setFileType(filename)
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("cached server: %s\n", r.URL.Path)
-		fcache.Seek(0, io.SeekStart)
 		w.Header().Set("Content-Type", fileType)
-		http.ServeContent(w, r, filename, modtime, fcache)
+		w.Write(content)
 	}//-- end return for existing file
 }//-- end func cacheFileServer
 
