@@ -15,6 +15,7 @@ const (
 
 type SessionManager struct {
 	sessions map[string]string
+	toExclude []string
 	randGen *rand.Rand
 	sessionDuration int
 }//-- end SessionManager struct
@@ -59,9 +60,11 @@ func (sm *SessionManager) Validate(key, hash string) bool {
 	return exists && value == hash
 }//-- end func SessionManager.Validate
 
-func NewSessionManager(sessionDuration int) *SessionManager {
+func NewSessionManager(sessionDuration int,
+		excluded []string) *SessionManager {
 	return &SessionManager{
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
+		toExclude: excluded,
 		sessions: make(map[string]string),
 		sessionDuration: sessionDuration}//-- end return
 }//-- end func NewSessionManager
@@ -75,6 +78,10 @@ func handleShouldLogin(w http.ResponseWriter, r *http.Request) {
 func (sm *SessionManager) Middleware (app *Webapp) Middleware {
 	manager := sm
 	return func(w http.ResponseWriter, r *http.Request) bool {
+		for _, path := range sm.toExclude {
+			if (len(r.URL.Path) >= len(path) &&
+				r.URL.Path[:len(path)] == path) { return true }
+		}//-- check if url excluded
 		sessionCookie, err := r.Cookie(session_cookie_name)
 		if err != nil {
 			handleShouldLogin(w, r)
