@@ -109,6 +109,7 @@ func (sm *SessionManager) LoginHandler (validator func(
 				MaxAge: sm.sessionDuration,
 				Secure: true,
 				HttpOnly: true}
+			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"loginSucceeded": true}`))
 			http.SetCookie(w, &sessionCookie)
 		}//-- end return
