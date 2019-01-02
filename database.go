@@ -3,8 +3,8 @@ package webapp
 import (
 	"database/sql"
 	"strings"
-	"container/list"
 	"encoding/json"
+	"encoding/xml"
 )
 
 type DatabaseConfig struct {
@@ -35,7 +35,7 @@ func (db *database) registerQuery (name, query string) error {
 	return nil
 }//-- end func database.registerQuery
 
-type SqlQuerier func(...interface{}) (*list.List, error)
+type SqlQuerier func(...interface{}) ([]interface{}, error)
 
 type RowScanner func(Scannable) interface{}
 
@@ -43,12 +43,12 @@ func (db *database) prepareQuery (query string,
 		readRow RowScanner) (SqlQuerier, error) {
 	stmt, err := db.pool.Prepare(query)
 	if err != nil { return nil, err }
-	return func(a ...interface{}) (*list.List, error) {
+	return func(a ...interface{}) ([]interface{}, error) {
 		rows, err := stmt.Query(a...)
 		if err != nil { return nil, err }
-		results := list.New()
+		results := make([]interface{}, 0)
 		for rows.Next() {
-			results.PushBack(readRow(rows))
+			results = append(results, readRow(rows))
 		}//-- end for rows.Next
 		return results, nil
 	}, nil//-- end return
@@ -59,12 +59,16 @@ func (querier SqlQuerier) toJSON (a ...interface{}) (string, error) {
 	if err != nil { return "", err }
 	builder := strings.Builder{}
 	encoder := json.NewEncoder(&builder)
-	builder.WriteString("[")
-	for el := data.Front(); el != nil; el = el.Next() {
-		encoder.Encode(el.Value)
-		builder.WriteString(",")
-	}//-- end for el
-	builder.WriteString("]")
+	encoder.Encode(data)
 	return builder.String(), nil
 }//-- end func SqlQuerier.toJSON
+
+func (querier SqlQuerier) toXML (a ...interface{}) (string, error) {
+	data, err := querier(a...)
+	if err != nil { return "", err }
+	builder := strings.Builder{}
+	encoder := xml.NewEncoder(&builder)
+	encoder.Encode(data)
+	return builder.String(), nil
+}//-- end SqlQuerier.toXML
 
