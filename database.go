@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 )
 
+type DatabaseConfig struct {
+	Driver, Name, User, Password string
+}
+
 type Scannable interface {
 	Scan(dest ...interface{}) error
 }//-- end Scannable interface

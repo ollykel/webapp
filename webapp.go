@@ -47,15 +47,11 @@ var (
 		"zip": "application/zip"}//-- end file_types
 )
 
-type DatabaseConfig struct {
-	Driver, Name, User, Password string
-}
-
 type Config struct {
 	Port string
 	Index string
 	StaticDir string
-	Database DatabaseConfig
+	Database DatabaseConfig//-- see database.go
 	Handlers map[string]http.HandlerFunc
 }//-- end Config struct
 
