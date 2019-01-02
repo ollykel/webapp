@@ -106,25 +106,6 @@ func cacheFileServer (filename string) http.HandlerFunc {
 	}//-- end return for existing file
 }//-- end func cacheFileServer
 
-type GetHandler func(http.ResponseWriter, *http.Request, []string)
-
-type PostHandler func(http.ResponseWriter, *http.Request, []string)
-
-func MakeGetHandler (fn GetHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		path := strings.Split(r.URL.Path[1:], "/")
-		fn(w, r, path)
-	}//-- end return
-}//-- end func MakeGetHandler
-
-func MakePostHandler (fn PostHandler) func(http.ResponseWriter,
-		*http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		path := strings.Split(r.URL.Path[1:], "/")
-		fn(w, r, path)
-	}//-- end return
-}//-- end func MakePostHandler
-
 func ServeJSON(w http.ResponseWriter, r *http.Request, item interface{}) {
 	encoder := json.NewEncoder(w)
 	err := encoder.Encode(item)
@@ -171,26 +152,13 @@ func (app *Webapp) handleMiddleware(w http.ResponseWriter,
 	return true
 }//-- end Webapp.handleMiddleware
 
-func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
-	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if app.handleMiddleware(w, r) { handler(w, r) }
-	})
-}//-- end func Webapp.HandleFunc
-
 type AppHandler func(*Webapp) http.HandlerFunc
 
 type Methods struct {
 	Get, Post, Put, Delete AppHandler
 }//-- end Methods struct
 
-func (app *Webapp) Register(path string, handler AppHandler) {
-	handleFunc := handler(app)
-	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if app.handleMiddleware(w, r) { handleFunc(w, r) }
-	})
-}//-- end Webapp.Register
-
-func (app *Webapp) RegisterMethods(path string, methods *Methods) {
+func (app *Webapp) Register(path string, methods *Methods) {
 	handleDefault := func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 	}//-- end handleDefault
@@ -202,6 +170,7 @@ func (app *Webapp) RegisterMethods(path string, methods *Methods) {
 	if methods.Delete != nil { handleDelete = methods.Delete(app) }
 	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		methodName := strings.ToUpper(r.Method)
+		if !app.handleMiddleware(w, r) { return }
 		switch (methodName) {
 			case "GET":
 				handleGet(w, r)
