@@ -179,12 +179,43 @@ func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 
 type AppHandler func(*Webapp) http.HandlerFunc
 
+type Methods struct {
+	Get, Post, Put, Delete AppHandler
+}//-- end Methods struct
+
 func (app *Webapp) Register(path string, handler AppHandler) {
 	handleFunc := handler(app)
 	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if app.handleMiddleware(w, r) { handleFunc(w, r) }
 	})
 }//-- end Webapp.Register
+
+func (app *Webapp) RegisterMethods(path string, methods *Methods) {
+	handleDefault := func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "bad request", http.StatusBadRequest)
+	}//-- end handleDefault
+	handleGet, handlePost, handlePut, handleDelete := handleDefault,
+		handleDefault, handleDefault, handleDefault
+	if methods.Get != nil { handleGet = methods.Get(app) }
+	if methods.Post != nil { handlePost = methods.Post(app) }
+	if methods.Put != nil { handlePut = methods.Put(app) }
+	if methods.Delete != nil { handleDelete = methods.Delete(app) }
+	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		methodName := strings.ToUpper(r.Method)
+		switch (methodName) {
+			case "GET":
+				handleGet(w, r)
+			case "POST":
+				handlePost(w, r)
+			case "PUT":
+				handlePut(w, r)
+			case "DELETE":
+				handleDelete(w, r)
+			default:
+				handleDefault(w, r)
+		}//-- end switch
+	});//-- end HandleFunc
+}//-- end Webapp.RegisterMethods
 
 func (app *Webapp) PrepareQuery (query string,
 		readRow RowScanner) (SqlQuerier, error) {
