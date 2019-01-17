@@ -12,39 +12,14 @@ import (
 	"fmt"
 	"log"
 	// "io"
-	"io/ioutil"
 	"strings"
 	"container/list"
 	"net/http"
 	"context"
 	"encoding/json"
 	"encoding/xml"
-)
-
-var (
-	file_types = map[string]string{
-		"default": "text/plain",
-		"txt": "text/plain",
-		"html": "text/html",
-		"css": "text/css",
-		"js": "application/javascript",
-		"csv": "text/csv",
-		"gif": "image/gif",
-		"ico": "image/x-icon",
-		"jpeg": "image/jpeg",
-		"jpg": "image/jpeg",
-		"json": "application/json",
-		"mpeg": "video/mpeg",
-		"png": "image/png",
-		"pdf": "application/pdf",
-		"svg": "image/svg+xml",
-		"tar": "application/x-tar",
-		"tif": "image/tiff",
-		"tiff": "image/tiff",
-		"wav": "audio/wav",
-		"xhtml": "application/xhtml+xml",
-		"xml": "application/xml",
-		"zip": "application/zip"}//-- end file_types
+	"./wapputils"
+	"./model"
 )
 
 type Config struct {
@@ -53,7 +28,7 @@ type Config struct {
 	StaticDir string
 	Database DatabaseConfig//-- see database.go
 	Handlers map[string]http.HandlerFunc
-}//-- end Config struct
+}
 
 type decoder interface {
 	Decode (interface{}) error
@@ -82,49 +57,17 @@ func LoadConfig (filename string) (*Config, error) {
 	return config, nil
 }//-- end func LoadConfig
 
-func setFileType(filename string) string {
-	path := strings.Split(filename, ".")
-	ext := path[len(path) - 1]
-	fileType, exists := file_types[ext]
-	log.Printf("File type: %s\n", fileType)
-	if !exists { return file_types["default"] }
-	return fileType
-}//-- end func setFileType
-
-func cacheFileServer (filename string) http.HandlerFunc {
-	content, err := ioutil.ReadFile(filename)
-	if err != nil { return http.NotFound }
-	fileType := setFileType(filename)
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("cached server: %s\n", r.URL.Path)
-		w.Header().Set("Content-Type", fileType)
-		w.Write(content)
-	}//-- end return for existing file
-}//-- end func cacheFileServer
-
-func ServeJSON(w http.ResponseWriter, r *http.Request, item interface{}) {
-	encoder := json.NewEncoder(w)
-	err := encoder.Encode(item)
-	if err != nil {
-		http.Error(w, "internal server error",
-			http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-}//-- end func ServeJSON
-
 type Webapp struct {
 	server *http.Server//-- use *ServeMux as handler
 	mux *http.ServeMux
 	middleware *list.List
-	staticCache map[string]([]byte)
 	db *database
 }//-- end Webapp struct
 
 func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	log.Printf("serveStatic: %s\n", r.URL.Path)
 	filename := r.URL.Path[1:]
-	handler := cacheFileServer(filename)
+	handler := wapputils.CacheFileServer(filename)
 	app.mux.HandleFunc(r.URL.Path, handler)
 	handler(w, r)
 }//-- end Webapp.serveStatic
@@ -182,10 +125,68 @@ func (app *Webapp) Register(path string, methods *Methods) {
 	});//-- end HandleFunc
 }//-- end Webapp.RegisterMethods
 
-func (app *Webapp) PrepareQuery (query string,
+func (app *Webapp) PrepareQuery (query string, md *ModelDefinition,
 		readRow RowScanner) (SqlQuerier, error) {
-	return app.db.prepareQuery(query, readRow)
+	return app.db.prepareQuery(query, md, readRow)
 }//-- end Webapp.PrepareQuery
+
+func (app *Webapp) PrepareStmt (query string,
+		md *ModelDefinition) (SqlStmt, error) {
+	return app.db.prepareStmt(query, md)
+}//-- end Webapp.PrepareStmt
+
+type Model interface {
+	model.Model
+	Init(*Webapp) error
+}//-- end Model interface
+
+func getModelFieldnames (fields map[string]string) []string {
+	fieldNames := make([]string, len(fields))
+	i := 0
+	for key := range fields {
+		fieldNames[i] = key
+		i++
+	}
+	return fieldNames
+}//-- end func getModelFieldnames
+
+type ModelDefinition struct {
+	Tablename func() string
+	Fields func() map[string]string
+	Constraints func() map[string]string
+	Init func(*Webapp) error
+}//-- end ModelDefinition struct
+
+type ModelWrapper struct {
+	def *ModelDefinition
+}//-- end ModelWrapper struct
+
+func (wrapper *ModelWrapper) Tablename () string {
+	return wrapper.def.Tablename()
+}//-- end ModelWrapper.Tablename
+
+func (wrapper *ModelWrapper) Fields () map[string]string {
+	return wrapper.def.Fields()
+}
+
+func (wrapper *ModelWrapper) Constraints () map[string]string {
+	return wrapper.def.Constraints()
+}
+
+func (wrapper *ModelWrapper) Init (app *Webapp) error {
+	return wrapper.def.Init(app)
+}
+
+func (app *Webapp) RegisterModels (mods []*ModelDefinition) error {
+	var err error
+	for _, mod := range mods {
+		err = app.db.RegisterModel(&ModelWrapper{def: mod})
+		if err != nil { return err }
+		err = mod.Init(app)
+		if err != nil { return err }
+	}//-- end for range mods
+	return nil
+}//-- end Webapp.RegisterModels
 
 func (app *Webapp) ListenAndServe() error {
 	log.Printf("Server listening at %s...\n", app.server.Addr)
@@ -199,7 +200,6 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 func Init (config *Config) (*Webapp, error) {
 	var err error
 	app := new(Webapp)
-	app.staticCache = make(map[string]([]byte))
 	app.db, err = initDatabase(config.Database.Driver,
 		config.Database.Name, config.Database.User,
 		config.Database.Password)
@@ -208,7 +208,7 @@ func Init (config *Config) (*Webapp, error) {
 	}
 	app.middleware = list.New()
 	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/", cacheFileServer(config.Index))
+	app.mux.HandleFunc("/", wapputils.CacheFileServer(config.Index))
 	app.mux.HandleFunc(config.StaticDir, app.serveStatic)
 	app.server = &http.Server{Addr: config.Port, Handler: app.mux}
 	return app, nil
