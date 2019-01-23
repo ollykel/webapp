@@ -32,6 +32,8 @@ type SqlQuerier func(...interface{}) ([]interface{}, error)
 
 type SqlStmt func(model.Sqlizable, ...interface{}) error
 
+type SqlQuery func(model.Sqlizable, ...interface{}) error
+
 type RowScanner func(Scannable) interface{}
 
 func parseQuery(query string, md *ModelDefinition) string {
@@ -75,6 +77,19 @@ func (db *database) prepareStmt (query string,
 		return nil
 	}, nil//-- end return
 }//-- end database.prepareStmt
+
+func (db *database) makeQuery (query string,
+		md *ModelDefinition) (SqlQuery, error) {
+	finalQuery := parseQuery(query, md)
+	return func(dest model.Sqlizable, a ...interface{}) error {
+		rows, err := db.pool.Query(finalQuery, a...)
+		if err != nil { return err }
+		if dest != nil {
+			for rows.Next() { dest.Append(rows) }
+		}
+		return nil
+	}, nil
+}//-- end func database.makeQuery
 
 func (querier SqlQuerier) toJSON (a ...interface{}) (string, error) {
 	data, err := querier(a...)
