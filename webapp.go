@@ -219,9 +219,10 @@ type Model interface {
 }//-- end Model interface
 
 func getModelFieldnames (fields []model.Field) []string {
-	fieldNames := make([]string, len(fields))
+	fieldNames := make([]string, len(fields) + 1)
+	fieldNames[0] = "id"
 	for i := range fields {
-		fieldNames[i] = fields[i].Name
+		fieldNames[i + 1] = fields[i].Name
 	}
 	return fieldNames
 }//-- end func getModelFieldnames
