@@ -26,7 +26,7 @@ type Sqlizable interface {
 	Clear () error
 }//-- end Sqlizable interface
 
-const fgnKeyFmt = "FOREIGN KEY %s REFERENCES %s (id)"
+const fgnKeyFmt = "FOREIGN KEY (%s) REFERENCES %s (id)"
 
 func parseForeignKey (fd *Field) string {
 	return fmt.Sprintf(fgnKeyFmt, fd.Name, fd.Reference)
@@ -39,14 +39,14 @@ func Schema(mod Model) string {
 	constraints := make([]string, len(fields))
 	numConstraints := 0
 	for i, field := range fields {
-		fieldsSchema[i + 1] = field.ToSchema()
+		fieldsSchema[i + 1], _ = field.ToSchema()
 		if field.Reference != "" {
-			contraints[numConstraints] = parseForeignKey(&field)
+			constraints[numConstraints] = parseForeignKey(&field)
 			numConstraints++
 		}
 	}//-- end for range mod.Fields
 	schemas := append(fieldsSchema, constraints[:numConstraints]...)
 	return fmt.Sprintf("CREATE TABLE %s (%s)", mod.Tablename(),
-		strings.Join(", ", schemas))
+		strings.Join(schemas, ", "))
 }//-- end func Schema
 
