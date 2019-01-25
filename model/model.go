@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -8,32 +9,44 @@ type Scannable interface {
 	Scan (...interface{}) error
 }//-- end Scannable interface
 
+/*
+type Field struct {
+	Name, Attribs string
+}//-- end type Field
+*/
+
 type Model interface {
 	Tablename () string
-	Fields () map[string]string
+	Fields () []Field
 	Constraints () map[string]string
 }//-- end Model interface
 
 type Sqlizable interface {
-	Append (Scannable)
+	Append (Scannable) error
+	Clear () error
 }//-- end Sqlizable interface
 
+const fgnKeyFmt = "FOREIGN KEY %s REFERENCES %s (id)"
+
+func parseForeignKey (fd *Field) string {
+	return fmt.Sprintf(fgnKeyFmt, fd.Name, fd.Reference)
+}
+
 func Schema(mod Model) string {
-	output := strings.Builder{}
-	output.WriteString("CREATE TABLE " + mod.Tablename() + " (")
 	fields := mod.Fields()
-	for key, val := range fields {
-		output.WriteString(key + " " + val)
-		output.WriteString(", ")
+	fieldsSchema := make([]string, len(fields) + 1)
+	fieldsSchema[0] = defaultIdentity
+	constraints := make([]string, len(fields))
+	numConstraints := 0
+	for i, field := range fields {
+		fieldsSchema[i + 1] = field.ToSchema()
+		if field.Reference != "" {
+			contraints[numConstraints] = parseForeignKey(&field)
+			numConstraints++
+		}
 	}//-- end for range mod.Fields
-	constraints := mod.Constraints()
-	i := len(constraints)
-	for key, val := range constraints {
-		output.WriteString(key + " " + val)
-		if i != 1 { output.WriteString(", ") }
-		i--
-	}
-	output.WriteString(");")
-	return output.String()
+	schemas := append(fieldsSchema, constraints[:numConstraints]...)
+	return fmt.Sprintf("CREATE TABLE %s (%s)", mod.Tablename(),
+		strings.Join(", ", schemas))
 }//-- end func Schema
 

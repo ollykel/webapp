@@ -3,6 +3,7 @@ package webapp
 import (
 	"log"
 	"database/sql"
+	"context"
 	"strings"
 	"encoding/json"
 	"encoding/xml"
@@ -10,7 +11,7 @@ import (
 )
 
 type DatabaseConfig struct {
-	Driver, Name, User, Password string
+	Driver, DataSource, Name, User, Password string
 }
 
 type Scannable interface {
@@ -21,9 +22,9 @@ type database struct {
 	pool *sql.DB
 }//-- end database struct
 
-func initDatabase (driver, name, user, pass string) (*database, error) {
-	dataSource := strings.Join([]string{name, user, pass}, "/")
-	pool, err := sql.Open(driver, dataSource)
+func initDatabase (cfg *DatabaseConfig) (*database, error) {
+	dataSource := cfg.DataSource
+	pool, err := sql.Open(cfg.Driver, dataSource)
 	if err != nil { return nil, err }
 	return &database{pool: pool}, nil
 }//-- end func initDatabase
@@ -66,30 +67,55 @@ func (db *database) prepareQuery (query string, md *ModelDefinition,
 func (db *database) prepareStmt (query string,
 		md *ModelDefinition) (SqlStmt, error) {
 	finalQuery := parseQuery(query, md)
-	stmt, err := db.pool.Prepare(finalQuery)
+	ctx := context.Background()
+	stmt, err := db.pool.PrepareContext(ctx, finalQuery)
 	if err != nil { return nil, err }
-	return func(dest model.Sqlizable, a ...interface{}) error {
-		rows, err := stmt.Query(a...)
+	var scanner func(model.Sqlizable, ...interface{}) error
+	scanner = func(dest model.Sqlizable, a ...interface{}) error {
+		cont := context.Background()
+		rows, err := stmt.QueryContext(cont, a...)
 		if err != nil { return err }
+		defer rows.Close()
 		if dest != nil {
-			for rows.Next() { dest.Append(rows) }//-- end for rows.Next
+			for rows.Next() {
+				err = dest.Append(rows)
+				if err != nil { return err }
+			}//-- end for rows.Next
 		}
-		return nil
-	}, nil//-- end return
+		return rows.Err()
+	}//-- end func scanner
+	return scanner, nil//-- end return
 }//-- end database.prepareStmt
 
 func (db *database) makeQuery (query string,
 		md *ModelDefinition) (SqlQuery, error) {
 	finalQuery := parseQuery(query, md)
-	return func(dest model.Sqlizable, a ...interface{}) error {
-		rows, err := db.pool.Query(finalQuery, a...)
+	scanner := func(dest model.Sqlizable, a ...interface{}) error {
+		ctx := context.Background()
+		rows, err := db.pool.QueryContext(ctx, finalQuery, a...)
 		if err != nil { return err }
+		defer rows.Close()
 		if dest != nil {
-			for rows.Next() { dest.Append(rows) }
+			for rows.Next() {
+				err = dest.Append(rows)
+				if err != nil { return err }
+			}//-- end for rows.Next
 		}
-		return nil
-	}, nil
+		return rows.Err()
+	}//-- end func scanner
+	return scanner, nil
 }//-- end func database.makeQuery
+
+type SqlCmd func(...interface{}) (sql.Result, error)
+
+func (db *database) makeCmd (query string,
+		md *ModelDefinition) (SqlCmd, error) {
+	finalCmd := parseQuery(query, md)
+	return func(a ...interface{}) (sql.Result, error) {
+		ctx := context.Background()
+		return db.pool.ExecContext(ctx, finalCmd, a...)
+	}, nil
+}//-- end func database.makeCmd
 
 func (querier SqlQuerier) toJSON (a ...interface{}) (string, error) {
 	data, err := querier(a...)

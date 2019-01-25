@@ -208,24 +208,27 @@ func (app *Webapp) MakeQuery (query string,
 	return app.db.makeQuery(query, md)
 }//-- end Webapp.MakeQuery
 
+func (app *Webapp) MakeCmd (query string,
+		md *ModelDefinition) (SqlCmd, error) {
+	return app.db.makeCmd(query, md)
+}//-- end Webapp.MakeCmd
+
 type Model interface {
 	model.Model
 	Init(*Webapp) error
 }//-- end Model interface
 
-func getModelFieldnames (fields map[string]string) []string {
+func getModelFieldnames (fields []model.Field) []string {
 	fieldNames := make([]string, len(fields))
-	i := 0
-	for key := range fields {
-		fieldNames[i] = key
-		i++
+	for i := range fields {
+		fieldNames[i] = fields[i].Name
 	}
 	return fieldNames
 }//-- end func getModelFieldnames
 
 type ModelDefinition struct {
 	Tablename func() string
-	Fields func() map[string]string
+	Fields func() []model.Field
 	Constraints func() map[string]string
 	Init func(*Webapp) error
 }//-- end ModelDefinition struct
@@ -238,7 +241,7 @@ func (wrapper *ModelWrapper) Tablename () string {
 	return wrapper.def.Tablename()
 }//-- end ModelWrapper.Tablename
 
-func (wrapper *ModelWrapper) Fields () map[string]string {
+func (wrapper *ModelWrapper) Fields () []model.Field {
 	return wrapper.def.Fields()
 }
 
@@ -273,9 +276,7 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 func Init (config *Config) (*Webapp, error) {
 	var err error
 	app := new(Webapp)
-	app.db, err = initDatabase(config.Database.Driver,
-		config.Database.Name, config.Database.User,
-		config.Database.Password)
+	app.db, err = initDatabase(&config.Database)
 	if err != nil {
 		return nil, err
 	}
