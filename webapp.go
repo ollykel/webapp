@@ -71,7 +71,9 @@ func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	handler(w, r)
 }//-- end Webapp.serveStatic
 
-type Middleware func(http.ResponseWriter, *http.Request) bool
+type ReqData map[string]string
+
+type Middleware func(http.ResponseWriter, *http.Request, ReqData) bool
 
 type MiddlewareBuilder func(*Webapp) Middleware
 
@@ -84,19 +86,19 @@ func (app *Webapp) AddMiddleware(builders ...MiddlewareBuilder) {
 }//-- end Webapp.AddMiddleware
 
 func (app *Webapp) handleMiddleware(w http.ResponseWriter,
-		r *http.Request) bool {
+		r *http.Request, data ReqData) (ReqData, bool) {
 	shouldContinue := true
 	for _, mware := range app.middleware {
-		shouldContinue = mware(w, r)
-		if !shouldContinue { return false }
-	}//-- end for el
-	return true
+		shouldContinue = mware(w, r, data)
+		if !shouldContinue { return nil, false }
+	}//-- end for mware
+	return data, true
 }//-- end Webapp.handleMiddleware
 
 type AppHandler func(*Webapp) http.HandlerFunc
 
-type Controller func(map[string]string) (int, string)
-type View func(map[string][]string) (map[string]interface{}, int, string)
+type Controller func(ReqData) (int, string)
+type View func(ReqData) (map[string]interface{}, int, string)
 
 /*
 type Methods struct {
@@ -115,12 +117,22 @@ type Methods struct {
 	Post, Put, Delete Controller
 }//-- end Methods struct
 
+func formToReqData (form map[string][]string) ReqData {
+	output := make(ReqData)
+	for key, val := range form {
+		output[key] = strings.Join(val, " ")
+	}//-- end for range form 
+	return output
+}//-- end func formToReqData
+
 func (app *Webapp) HandleView (vw View) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !app.handleMiddleware(w, r) { return }
-		w.Header().Set("Content-Type", "application/json")
 		r.ParseForm()
-		output, code, msg := vw(r.Form)
+		data := formToReqData(r.Form)
+		data, shouldContinue := app.handleMiddleware(w, r, data)
+		if !shouldContinue { return }
+		w.Header().Set("Content-Type", "application/json")
+		output, code, msg := vw(data)
 		w.WriteHeader(code)
 		if code != http.StatusOK {
 			fmt.Fprintf(w, `{"Error": "%s"}`, msg)
@@ -138,11 +150,12 @@ type controllerStatus struct {
 
 func (app *Webapp) HandleController (control Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !app.handleMiddleware(w, r) { return }
-		w.Header().Set("Content-Type", "application/json")
+		data := make(ReqData)
 		decoder := json.NewDecoder(r.Body)
-		data := make(map[string]string)
 		decoder.Decode(data)
+		data, shouldContinue := app.handleMiddleware(w, r, data)
+		if !shouldContinue { return }
+		w.Header().Set("Content-Type", "application/json")
 		code, msg := control(data)
 		w.WriteHeader(code)
 		status := controllerStatus{}

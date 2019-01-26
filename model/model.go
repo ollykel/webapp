@@ -18,7 +18,6 @@ type Field struct {
 type Model interface {
 	Tablename () string
 	Fields () []Field
-	Constraints () map[string]string
 }//-- end Model interface
 
 type Sqlizable interface {
@@ -27,10 +26,6 @@ type Sqlizable interface {
 }//-- end Sqlizable interface
 
 const fgnKeyFmt = "FOREIGN KEY (%s) REFERENCES %s (id)"
-
-func parseForeignKey (fd *Field) string {
-	return fmt.Sprintf(fgnKeyFmt, fd.Name, fd.Reference)
-}
 
 func Schema(mod Model) string {
 	fields := mod.Fields()
@@ -41,7 +36,7 @@ func Schema(mod Model) string {
 	for i, field := range fields {
 		fieldsSchema[i + 1], _ = field.ToSchema()
 		if field.Reference != "" {
-			constraints[numConstraints] = parseForeignKey(&field)
+			constraints[numConstraints], _ = field.buildFgnKey()
 			numConstraints++
 		}
 	}//-- end for range mod.Fields
