@@ -108,11 +108,14 @@ type Methods struct {
 
 func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if app.handleMiddleware(w, r) { handler(w, r) }
+		if app.handleMiddleware(w, r, make(map[string]string)) {
+			handler(w, r)
+		}
 	})
 }//-- end func Webapp.HandleFunc
 
 type Methods struct {
+	Handler http.HandlerFunc
 	Get View
 	Post, Put, Delete Controller
 }//-- end Methods struct
@@ -170,6 +173,10 @@ func (app *Webapp) HandleController (control Controller) http.HandlerFunc {
 }//-- end func HandleController
 
 func (app *Webapp) Register(path string, methods *Methods) {
+	if methods.Handler != nil {
+		app.HandleFunc(path, methods.Handler)
+		return
+	}
 	handleDefault := func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 	}//-- end handleDefault
