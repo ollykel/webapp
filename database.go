@@ -139,7 +139,7 @@ func (db *database) TableExists (name string) bool {
 	row := db.pool.QueryRow("SHOW TABLES LIKE ?", name)
 	table := ""
 	err := row.Scan(&table)
-	return err == nil
+	return err == nil && table != ""
 }//-- end database.TableExists
 
 func (db *database) RegisterModel (mod model.Model) error {

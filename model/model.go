@@ -22,7 +22,6 @@ type Model interface {
 
 type Sqlizable interface {
 	Append (Scannable) error
-	Clear () error
 }//-- end Sqlizable interface
 
 const fgnKeyFmt = "FOREIGN KEY (%s) REFERENCES %s (id)"

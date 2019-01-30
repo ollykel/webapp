@@ -19,6 +19,7 @@ import (
 	"encoding/xml"
 	"./wapputils"
 	"./model"
+	"./resp"
 )
 
 type Config struct {
@@ -73,32 +74,25 @@ func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 
 type ReqData map[string]string
 
-type Middleware func(http.ResponseWriter, *http.Request, ReqData) bool
+type Middleware func(*http.Request, ReqData) resp.Response
 
-type MiddlewareBuilder func(*Webapp) Middleware
-
-func (app *Webapp) AddMiddleware(builders ...MiddlewareBuilder) {
-	additions := make([]Middleware, len(builders))
-	for i := range builders {
-		additions[i] = builders[i](app)
-	}
+func (app *Webapp) AddMiddleware(additions ...Middleware) {
 	app.middleware = append(app.middleware, additions...)
 }//-- end Webapp.AddMiddleware
 
-func (app *Webapp) handleMiddleware(w http.ResponseWriter,
-		r *http.Request, data ReqData) (ReqData, bool) {
-	shouldContinue := true
+func (app *Webapp) handleMiddleware(r *http.Request,
+		data ReqData) (res resp.Response) {
 	for _, mware := range app.middleware {
-		shouldContinue = mware(w, r, data)
-		if !shouldContinue { return nil, false }
+		res = mware(r, data)
+		if res != nil { return }
 	}//-- end for mware
-	return data, true
+	return
 }//-- end Webapp.handleMiddleware
 
 type AppHandler func(*Webapp) http.HandlerFunc
 
-type Controller func(ReqData) (int, string)
-type View func(ReqData) (map[string]interface{}, int, string)
+type Controller func(ReqData) resp.Response
+type View func(ReqData) resp.Response
 
 /*
 type Methods struct {
@@ -108,9 +102,12 @@ type Methods struct {
 
 func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if app.handleMiddleware(w, r, make(map[string]string)) {
-			handler(w, r)
+		res := app.handleMiddleware(r, make(ReqData))
+		if res != nil {
+			res.Write(w)
+			return
 		}
+		handler(w, r)
 	})
 }//-- end func Webapp.HandleFunc
 
@@ -132,17 +129,13 @@ func (app *Webapp) HandleView (vw View) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		data := formToReqData(r.Form)
-		data, shouldContinue := app.handleMiddleware(w, r, data)
-		if !shouldContinue { return }
-		w.Header().Set("Content-Type", "application/json")
-		output, code, msg := vw(data)
-		w.WriteHeader(code)
-		if code != http.StatusOK {
-			fmt.Fprintf(w, `{"Error": "%s"}`, msg)
-		} else {
-			encoder := json.NewEncoder(w)
-			encoder.Encode(output)
+		res := app.handleMiddleware(r, data)
+		if res != nil {
+			res.Write(w)
+			return
 		}
+		res = vw(data)
+		if res != nil { res.Write(w) }
 	}//-- end return
 }//-- end func HandleView
 
@@ -156,19 +149,13 @@ func (app *Webapp) HandleController (control Controller) http.HandlerFunc {
 		data := make(ReqData)
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
-		data, shouldContinue := app.handleMiddleware(w, r, data)
-		if !shouldContinue { return }
-		w.Header().Set("Content-Type", "application/json")
-		code, msg := control(data)
-		w.WriteHeader(code)
-		status := controllerStatus{}
-		if code != http.StatusOK {
-			status.Success, status.Error = false, msg
-		} else {
-			status.Success = true
+		response := app.handleMiddleware(r, data)
+		if response != nil {
+			response.Write(w)
+			return
 		}
-		encoder := json.NewEncoder(w)
-		encoder.Encode(&status)
+		response = control(data)
+		if response != nil { response.Write(w) }
 	}//-- end return
 }//-- end func HandleController
 
