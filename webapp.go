@@ -11,7 +11,6 @@ import (
 	"os"
 	"fmt"
 	"log"
-	// "io"
 	"strings"
 	"net/http"
 	"context"
@@ -72,7 +71,7 @@ func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	handler(w, r)
 }//-- end Webapp.serveStatic
 
-type ReqData map[string]string
+type ReqData map[string][]byte
 
 type Middleware func(*http.Request, ReqData) resp.Response
 
@@ -120,7 +119,7 @@ type Methods struct {
 func formToReqData (form map[string][]string) ReqData {
 	output := make(ReqData)
 	for key, val := range form {
-		output[key] = strings.Join(val, " ")
+		output[key] = []byte(strings.Join(val, " "))
 	}//-- end for range form 
 	return output
 }//-- end func formToReqData
@@ -146,9 +145,8 @@ type controllerStatus struct {
 
 func (app *Webapp) HandleController (control Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data := make(ReqData)
-		decoder := json.NewDecoder(r.Body)
-		decoder.Decode(data)
+		r.ParseForm()
+		data := formToReqData(r.PostForm)
 		response := app.handleMiddleware(r, data)
 		if response != nil {
 			response.Write(w)
