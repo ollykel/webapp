@@ -1,7 +1,6 @@
 package webapp
 
 import (
-	"log"
 	"database/sql"
 	"context"
 	"strings"
@@ -38,8 +37,12 @@ type SqlQuery func(model.Sqlizable, ...interface{}) error
 type RowScanner func(Scannable) interface{}
 
 func parseQuery(query string, md *ModelDefinition) string {
-	finalQuery := strings.Replace(query, "%TABLE%", md.Tablename(), -1)
+	tableName := md.Tablename()
+	finalQuery := strings.Replace(query, "%TABLE%", tableName, -1)
 	fieldNames := getModelFieldnames(md.Fields())
+	for i, nm := range fieldNames {
+		fieldNames[i] = strings.Join([]string{tableName, nm}, ".")
+	}
 	finalQuery = strings.Replace(finalQuery, "%FIELDS%",
 		strings.Join(fieldNames, ", "), -1)
 	return finalQuery
@@ -56,7 +59,6 @@ func (db *database) prepareQuery (query string, md *ModelDefinition,
 		results := make([]interface{}, 0)
 		var nxt interface{}
 		for rows.Next() {
-			log.Print("foo!")
 			nxt = readRow(rows)
 			if nxt != nil { results = append(results, nxt) }
 		}//-- end for rows.Next

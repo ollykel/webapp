@@ -18,7 +18,6 @@ import (
 	"encoding/xml"
 	"./wapputils"
 	"./model"
-	"./resp"
 )
 
 type Config struct {
@@ -71,27 +70,26 @@ func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	handler(w, r)
 }//-- end Webapp.serveStatic
 
-type ReqData map[string][]byte
+type ReqData map[string]string
 
-type Middleware func(*http.Request, ReqData) resp.Response
+type Middleware func(http.ResponseWriter, *http.Request, ReqData) bool
 
 func (app *Webapp) AddMiddleware(additions ...Middleware) {
 	app.middleware = append(app.middleware, additions...)
 }//-- end Webapp.AddMiddleware
 
-func (app *Webapp) handleMiddleware(r *http.Request,
-		data ReqData) (res resp.Response) {
+func (app *Webapp) handleMiddleware(w http.ResponseWriter, r *http.Request,
+		data ReqData) bool {
 	for _, mware := range app.middleware {
-		res = mware(r, data)
-		if res != nil { return }
+		if !mware(w, r, data) { return false }
 	}//-- end for mware
-	return
+	return true
 }//-- end Webapp.handleMiddleware
 
 type AppHandler func(*Webapp) http.HandlerFunc
 
-type Controller func(ReqData) resp.Response
-type View func(ReqData) resp.Response
+type Controller func(http.ResponseWriter, *http.Request, ReqData)
+type View func(http.ResponseWriter, *http.Request, ReqData)
 
 /*
 type Methods struct {
@@ -101,12 +99,7 @@ type Methods struct {
 
 func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		res := app.handleMiddleware(r, make(ReqData))
-		if res != nil {
-			res.Write(w)
-			return
-		}
-		handler(w, r)
+		if app.handleMiddleware(w, r, make(ReqData)) { handler(w, r) }
 	})
 }//-- end func Webapp.HandleFunc
 
@@ -116,25 +109,20 @@ type Methods struct {
 	Post, Put, Delete Controller
 }//-- end Methods struct
 
+/*
 func formToReqData (form map[string][]string) ReqData {
 	output := make(ReqData)
 	for key, val := range form {
-		output[key] = []byte(strings.Join(val, " "))
+		output[key] = strings.Join(val, " ")
 	}//-- end for range form 
 	return output
 }//-- end func formToReqData
+*/
 
 func (app *Webapp) HandleView (vw View) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		data := formToReqData(r.Form)
-		res := app.handleMiddleware(r, data)
-		if res != nil {
-			res.Write(w)
-			return
-		}
-		res = vw(data)
-		if res != nil { res.Write(w) }
+		data := make(ReqData)
+		if app.handleMiddleware(w, r, data) { vw(w, r, data) }
 	}//-- end return
 }//-- end func HandleView
 
@@ -145,15 +133,8 @@ type controllerStatus struct {
 
 func (app *Webapp) HandleController (control Controller) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		data := formToReqData(r.PostForm)
-		response := app.handleMiddleware(r, data)
-		if response != nil {
-			response.Write(w)
-			return
-		}
-		response = control(data)
-		if response != nil { response.Write(w) }
+		data := make(ReqData)
+		if app.handleMiddleware(w, r, data) { control(w, r, data) }
 	}//-- end return
 }//-- end func HandleController
 

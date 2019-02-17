@@ -11,15 +11,22 @@ type FieldType int
 // FieldType enums
 const (
 	Integer FieldType = 1
-	Int FieldType = 2
-	TinyInt FieldType = 4
-	SmallInt FieldType = 8
-	BigInt FieldType = 16
-	Char FieldType = 32
-	Varchar FieldType = 64
-	Text FieldType = 128
-	Binary FieldType = 256
-	Datetime FieldType = 512
+	Int FieldType = 1 << 1
+	TinyInt FieldType = 1 << 2
+	SmallInt FieldType = 1 << 3
+	BigInt FieldType = 1 << 4
+	Char FieldType = 1 << 5
+	Varchar FieldType = 1 << 6
+	Text FieldType = 1 << 7
+	TinyText FieldType = 1 << 8
+	MediumText FieldType = 1 << 9
+	LongText FieldType = 1 << 10
+	Blob FieldType = 1 << 11
+	Binary FieldType = Blob
+	TinyBlob FieldType = 1 << 12
+	MediumBlob FieldType = 1 << 13
+	LongBlob FieldType = 1 << 14
+	Datetime FieldType = 1 << 15
 	// Type Categories
 	integerType FieldType = (Integer | Int | TinyInt | SmallInt | BigInt)
 	lengthedType FieldType = (Char | Varchar)
@@ -43,8 +50,20 @@ func (ft FieldType) getName () (string, error) {
 			return "VARCHAR", nil
 		case Text:
 			return "TEXT", nil
-		case Binary:
+		case TinyText:
+			return "TINYTEXT", nil
+		case MediumText:
+			return "MEDIUMTEXT", nil
+		case LONGTEXT:
+			return "LONGTEXT", nil
+		case Blob, Binary:
 			return "BLOB", nil
+		case TinyBlob:
+			return "TINYBLOB", nil
+		case MediumBlob:
+			return "MEDIUMBLOB", nil
+		case LongBlob:
+			return "LONGBLOB", nil
 		case Datetime:
 			return "DATETIME", nil
 		default:
