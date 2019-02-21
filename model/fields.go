@@ -54,9 +54,9 @@ func (ft FieldType) getName () (string, error) {
 			return "TINYTEXT", nil
 		case MediumText:
 			return "MEDIUMTEXT", nil
-		case LONGTEXT:
+		case LongText:
 			return "LONGTEXT", nil
-		case Blob, Binary:
+		case Blob:
 			return "BLOB", nil
 		case TinyBlob:
 			return "TINYBLOB", nil
