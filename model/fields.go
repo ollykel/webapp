@@ -109,6 +109,14 @@ type Field struct {
 	OnUpdate OnChangeBehavior
 }//-- end Field struct
 
+func (self *Field) Equals (other *Field) bool {
+	return (self.Name == other.Name && self.Type == other.Type &&
+		self.Length == other.Length && self.Null == other.Null &&
+		self.AutoIncrement == other.AutoIncrement &&
+		self.Unique == other.Unique && self.Reference == other.Reference &&
+		self.OnDelete == other.OnDelete && self.OnUpdate == other.OnUpdate)
+}//-- end Equals
+
 func (fd *Field) buildFgnKey () (string, error) {
 	output := []string{"FOREIGN KEY", "", "REFERENCES", fd.Reference,
 		"(id)", "", ""}

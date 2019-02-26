@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"./wapputils"
+	"./database"
 	"./model"
 )
 
@@ -24,7 +25,7 @@ type Config struct {
 	Port string
 	Index string
 	StaticDir string
-	Database DatabaseConfig//-- see database.go
+	Database database.Config//-- see database.go
 	Handlers map[string]http.HandlerFunc
 }
 
@@ -59,7 +60,7 @@ type Webapp struct {
 	server *http.Server//-- use *ServeMux as handler
 	mux *http.ServeMux
 	middleware []Middleware
-	db *database
+	db *database.Database
 }//-- end Webapp struct
 
 func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
@@ -91,12 +92,6 @@ type AppHandler func(*Webapp) http.HandlerFunc
 type Controller func(http.ResponseWriter, *http.Request, ReqData)
 type View func(http.ResponseWriter, *http.Request, ReqData)
 
-/*
-type Methods struct {
-	Get, Post, Put, Delete AppHandler
-}//-- end Methods struct
-*/
-
 func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if app.handleMiddleware(w, r, make(ReqData)) { handler(w, r) }
@@ -108,16 +103,6 @@ type Methods struct {
 	Get View
 	Post, Put, Delete Controller
 }//-- end Methods struct
-
-/*
-func formToReqData (form map[string][]string) ReqData {
-	output := make(ReqData)
-	for key, val := range form {
-		output[key] = strings.Join(val, " ")
-	}//-- end for range form 
-	return output
-}//-- end func formToReqData
-*/
 
 func (app *Webapp) HandleView (vw View) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -179,76 +164,14 @@ func (app *Webapp) RegisterMethods (methods map[string]*Methods) {
 	}//-- end for range handlers
 }//-- end func Webapp.RegisterMethods
 
-func (app *Webapp) PrepareQuery (query string, md *ModelDefinition,
-		readRow RowScanner) (SqlQuerier, error) {
-	return app.db.prepareQuery(query, md, readRow)
-}//-- end Webapp.PrepareQuery
-
-func (app *Webapp) PrepareStmt (query string,
-		md *ModelDefinition) (SqlStmt, error) {
-	return app.db.prepareStmt(query, md)
-}//-- end Webapp.PrepareStmt
-
-func (app *Webapp) MakeQuery (query string,
-		md *ModelDefinition) (SqlQuery, error) {
-	return app.db.makeQuery(query, md)
-}//-- end Webapp.MakeQuery
-
-func (app *Webapp) MakeCmd (query string,
-		md *ModelDefinition) (SqlCmd, error) {
-	return app.db.makeCmd(query, md)
-}//-- end Webapp.MakeCmd
-
-type Model interface {
-	model.Model
-	Init(*Webapp) error
-}//-- end Model interface
-
-func getModelFieldnames (fields []model.Field) []string {
-	fieldNames := make([]string, len(fields) + 1)
-	fieldNames[0] = "id"
-	for i := range fields {
-		fieldNames[i + 1] = fields[i].Name
-	}
-	return fieldNames
-}//-- end func getModelFieldnames
-
-type ModelDefinition struct {
-	Tablename func() string
-	Fields func() []model.Field
-	Constraints func() map[string]string
-	Init func(*Webapp) error
-}//-- end ModelDefinition struct
-
-type ModelWrapper struct {
-	def *ModelDefinition
-}//-- end ModelWrapper struct
-
-func (wrapper *ModelWrapper) Tablename () string {
-	return wrapper.def.Tablename()
-}//-- end ModelWrapper.Tablename
-
-func (wrapper *ModelWrapper) Fields () []model.Field {
-	return wrapper.def.Fields()
-}
-
-func (wrapper *ModelWrapper) Constraints () map[string]string {
-	return wrapper.def.Constraints()
-}
-
-func (wrapper *ModelWrapper) Init (app *Webapp) error {
-	return wrapper.def.Init(app)
-}
-
-func (app *Webapp) RegisterModels (mods []*ModelDefinition) error {
-	var err error
+func (app *Webapp) RegisterModels (mods []*model.Definition) (err error) {
 	for _, mod := range mods {
-		err = app.db.RegisterModel(&ModelWrapper{def: mod})
-		if err != nil { return err }
-		err = mod.Init(app)
-		if err != nil { return err }
+		err = app.db.RegisterModel(mod)
+		if err != nil { return }
+		err = mod.Init(app.db)
+		if err != nil { return }
 	}//-- end for range mods
-	return nil
+	return
 }//-- end Webapp.RegisterModels
 
 func (app *Webapp) ListenAndServe() error {
@@ -263,7 +186,7 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 func Init (config *Config) (*Webapp, error) {
 	var err error
 	app := new(Webapp)
-	app.db, err = initDatabase(&config.Database)
+	app.db, err = database.New(&config.Database)
 	if err != nil {
 		return nil, err
 	}
