@@ -27,7 +27,7 @@ func (mt *modelTracker) Append (row model.Scannable) error {
 }//-- end modelTracker.Append
 
 var (
-	modelTrackerInitialized bool
+	modelTrackerInitialized bool = false
 	getModelTracker model.SqlQuery
 	updateModelTracker model.SqlCmd
 	createModelTracker model.SqlCmd
@@ -80,6 +80,7 @@ func initModelTrackers (db model.Database) (err error) {
 	getModelTracker, err = db.MakeQuery(`SELECT %FIELDS% FROM %TABLE%
 		WHERE name = ? LIMIT 1`, defineModelTracker())
 	if err != nil { return }
+	log.Print("Initialized getModelTracker...")
 	updateModelTracker, err = db.MakeCmd(`UPDATE %TABLE% SET
 		fields = ? WHERE name = ? LIMIT 1`, defineModelTracker())
 	if err != nil { return }
@@ -121,7 +122,7 @@ func (mig *migration) Schema () string {
 		case addMigration:
 			verb = "ADD"
 		case modMigration:
-			verb = "MODIFY"
+			verb = "CHANGE"
 		default:
 			log.Fatal(fmt.Sprintf("unrecognized migration (%d)", mig.Type))
 	}//-- end switch

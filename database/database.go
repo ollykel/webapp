@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"context"
 	"strings"
+	"log"
 	"../model"
 )
 
@@ -97,15 +98,19 @@ func (db *Database) TableExists (name string) bool {
 }//-- end Database.TableExists
 
 func (db *Database) SaveModel (mod *model.Definition) error {
-	if !modelTrackerInitialized { initModelTrackers(db) }
+	// if !modelTrackerInitialized { initModelTrackers(db) }
 	if db.TableExists(mod.Tablename) { return nil }
 	schema := mod.Schema()
 	_, err := db.pool.Exec(schema)
-	if err != nil { return err }
+	if err != nil {
+		log.Print(err.Error())
+		return err
+	}
 	return nil
 }//-- end func Database.SaveModel
 
 func (db *Database) RegisterModel (mod *model.Definition) error {
+	if !modelTrackerInitialized { initModelTrackers(db) }
 	db.Migrate(mod)
 	return nil
 }//-- end Database.RegisterModel
