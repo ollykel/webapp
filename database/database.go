@@ -96,11 +96,17 @@ func (db *Database) TableExists (name string) bool {
 	return err == nil && table != ""
 }//-- end Database.TableExists
 
-func (db *Database) RegisterModel (mod *model.Definition) error {
+func (db *Database) SaveModel (mod *model.Definition) error {
+	if !modelTrackerInitialized { initModelTrackers(db) }
 	if db.TableExists(mod.Tablename) { return nil }
 	schema := mod.Schema()
 	_, err := db.pool.Exec(schema)
 	if err != nil { return err }
 	return nil
-}//-- end func Database.RegisterModel
+}//-- end func Database.SaveModel
+
+func (db *Database) RegisterModel (mod *model.Definition) error {
+	db.Migrate(mod)
+	return nil
+}//-- end Database.RegisterModel
 

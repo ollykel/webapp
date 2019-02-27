@@ -69,3 +69,9 @@ func (first *Definition) Equals (second *Definition) bool {
 	return true
 }//-- end func Equal
 
+type Count int//-- used for single-column COUNT() queries
+
+func (ct *Count) Append (row Scannable) error {
+	return row.Scan(ct)
+}//-- end Count.Append
+
