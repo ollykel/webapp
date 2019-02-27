@@ -122,7 +122,7 @@ func (mig *migration) Schema () string {
 		case addMigration:
 			verb = "ADD"
 		case modMigration:
-			verb = "CHANGE"
+			verb = "MODIFY"
 		default:
 			log.Fatal(fmt.Sprintf("unrecognized migration (%d)", mig.Type))
 	}//-- end switch
@@ -141,13 +141,13 @@ func (db *Database) getMigrations (def *model.Definition) []migration {
 	}//-- end for range origDef.Fields
 	migrations, numMigrations := make([]migration, len(def.Fields)), 0
 	var mig *migration
-	for _, fd := range def.Fields {
+	for i, fd := range def.Fields {
 		mig = &migrations[numMigrations]
 		if origFields[fd.Name] == nil {
-			mig.Type, mig.Field = addMigration, &fd
+			mig.Type, mig.Field = addMigration, &def.Fields[i]
 			numMigrations++
 		} else if !fd.Equals(origFields[fd.Name]) {
-			mig.Type, mig.Field = modMigration, &fd
+			mig.Type, mig.Field = modMigration, &def.Fields[i]
 			numMigrations++
 		}
 	}//-- end for range def.Fields
@@ -165,6 +165,7 @@ func (db *Database) Migrate (def *model.Definition) {
 	} else {
 		migrations := db.getMigrations(def)
 		for _, mig := range migrations {
+			log.Printf("Migration: %s", mig.Schema())
 			_, err = db.pool.Exec(fmt.Sprintf("ALTER TABLE %s %s",
 				def.Tablename, mig.Schema()))
 			if err != nil { log.Fatal(err) }
