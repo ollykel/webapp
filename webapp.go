@@ -66,9 +66,12 @@ type Webapp struct {
 func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	log.Printf("serveStatic: %s\n", r.URL.Path)
 	filename := r.URL.Path[1:]
+	http.ServeFile(w, r, filename)
+	/*
 	handler := wapputils.CacheFileServer(filename)
 	app.mux.HandleFunc(r.URL.Path, handler)
 	handler(w, r)
+	*/
 }//-- end Webapp.serveStatic
 
 type ReqData map[string]string
