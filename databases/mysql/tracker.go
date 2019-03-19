@@ -1,10 +1,11 @@
-package database
+package mysql
 
 import (
 	"log"
 	"fmt"
 	"encoding/json"
-	"../model"
+	// local imports
+	"github.com/ollykel/webapp/webapp/model"
 )
 
 /**

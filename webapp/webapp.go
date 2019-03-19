@@ -16,17 +16,15 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"./wapputils"
-	"./database"
-	"./model"
+	"github.com/ollykel/webapp/webapp/wapputils"
+	"github.com/ollykel/webapp/webapp/model"
 )
 
 type Config struct {
 	Port string
 	Index string
 	StaticDir string
-	Database database.Config//-- see database.go
-	Handlers map[string]http.HandlerFunc
+	Database DatabaseConfig//-- see database.go
 }
 
 type decoder interface {
@@ -56,11 +54,17 @@ func LoadConfig (filename string) (*Config, error) {
 	return config, nil
 }//-- end func LoadConfig
 
+type Handler interface {
+	http.Handler
+	HandleFunc (path string, handler func(w http.ResponseWriter,
+		r *http.Request))
+}//-- end Handler interface
+
 type Webapp struct {
 	server *http.Server//-- use *ServeMux as handler
-	mux *http.ServeMux
+	mux Handler
 	middleware []Middleware
-	db *database.Database
+	db Database
 }//-- end Webapp struct
 
 func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +108,7 @@ func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
 type Methods struct {
 	Handler http.HandlerFunc
 	Get View
-	Post, Put, Delete Controller
+	Post, Put, Patch, Delete Controller
 }//-- end Methods struct
 
 func (app *Webapp) HandleView (vw View) http.HandlerFunc {
@@ -134,13 +138,17 @@ func (app *Webapp) Register(path string, methods *Methods) {
 	handleDefault := func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 	}//-- end handleDefault
-	handleGet, handlePost, handlePut, handleDelete := handleDefault,
-		handleDefault, handleDefault, handleDefault
+	handleGet, handlePost := handleDefault, handleDefault
+	handlePut, handlePatch := handleDefault, handleDefault
+	handleDelete := handleDefault
 	if methods.Get != nil { handleGet = app.HandleView(methods.Get) }
 	if methods.Post != nil {
 		handlePost = app.HandleController(methods.Post)
 	}
 	if methods.Put != nil { handlePut = app.HandleController(methods.Put) }
+	if methods.Patch != nil {
+		handlePatch = app.HandleController(methods.Patch)
+	}
 	if methods.Delete != nil {
 		handleDelete = app.HandleController(methods.Delete)
 	}
@@ -153,6 +161,8 @@ func (app *Webapp) Register(path string, methods *Methods) {
 				handlePost(w, r)
 			case "PUT":
 				handlePut(w, r)
+			case "PATCH":
+				handlePatch(w, r)
 			case "DELETE":
 				handleDelete(w, r)
 			default:
@@ -186,15 +196,16 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 	return app.server.Shutdown(ctx)
 }//-- end func Webapp.Shutdown
 
-func Init (config *Config) (*Webapp, error) {
+func Init (config *Config, handler Handler, db Database) (*Webapp, error) {
 	var err error
 	app := new(Webapp)
-	app.db, err = database.New(&config.Database)
+	app.db = db
+	err = db.Init(&config.Database)
 	if err != nil {
 		return nil, err
 	}
 	app.middleware = make([]Middleware, 0)
-	app.mux = http.NewServeMux()
+	app.mux = handler
 	app.mux.HandleFunc("/", wapputils.CacheFileServer(config.Index))
 	app.mux.HandleFunc(config.StaticDir, app.serveStatic)
 	app.server = &http.Server{Addr: config.Port, Handler: app.mux}

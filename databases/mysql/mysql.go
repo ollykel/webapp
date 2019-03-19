@@ -1,16 +1,22 @@
-package database
+package mysql
 
 import (
 	"database/sql"
+	"fmt"
 	"context"
 	"strings"
 	"log"
-	"../model"
+	// database driver
+	_"github.com/ziutek/mymysql/godrv"
+	// local imports
+	"github.com/ollykel/webapp/webapp"
+	"github.com/ollykel/webapp/webapp/model"
 )
 
-type Config struct {
-	Driver, DataSource, Name, User, Password string
-}
+const (
+	driverName = "mymysql"
+	dataSourceFmt = "%s/%s/%s"//-- DatabaseName/Username/Password
+)
 
 type Scannable interface {
 	Scan(dest ...interface{}) error
@@ -20,11 +26,11 @@ type Database struct {
 	pool *sql.DB
 }//-- end Database struct
 
-func New (cfg *Config) (*Database, error) {
-	dataSource := cfg.DataSource
-	pool, err := sql.Open(cfg.Driver, dataSource)
-	if err != nil { return nil, err }
-	return &Database{pool: pool}, nil
+func (db *Database) Init (cfg *webapp.DatabaseConfig) (err error) {
+	dataSource := fmt.Sprintf(dataSourceFmt, cfg.DatabaseName,
+		cfg.Username, cfg.Password)
+	db.pool, err = sql.Open(driverName, dataSource)
+	return
 }//-- end func initDatabase
 
 func parseQuery(query string, md *model.Definition) string {
