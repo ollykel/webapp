@@ -206,7 +206,8 @@ func Init (config *Config, handler Handler, db Database) (*Webapp, error) {
 	}
 	app.middleware = make([]Middleware, 0)
 	app.mux = handler
-	app.mux.HandleFunc("/", wapputils.CacheFileServer(config.Index))
+	ctx := map[string]string { "public": config.StaticDir }
+	app.mux.HandleFunc("/", wapputils.CacheFileServer(config.Index, ctx))
 	app.mux.HandleFunc(config.StaticDir, app.serveStatic)
 	app.server = &http.Server{Addr: config.Port, Handler: app.mux}
 	return app, nil

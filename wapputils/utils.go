@@ -1,11 +1,11 @@
 package wapputils
 
 import (
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 	"encoding/json"
+	"html/template"
 )
 
 var (
@@ -43,14 +43,14 @@ func SetFileType(filename string) string {
 	return fileType
 }//-- end func setFileType
 
-func CacheFileServer (filename string) http.HandlerFunc {
-	content, err := ioutil.ReadFile(filename)
+func CacheFileServer (filename string, ctx interface{}) http.HandlerFunc {
+	tmp, err := template.ParseFiles(filename)
 	if err != nil { return http.NotFound }
 	fileType := SetFileType(filename)
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("cached server: %s\n", r.URL.Path)
+		// log.Printf("cached server: %s\n", r.URL.Path)
 		w.Header().Set("Content-Type", fileType)
-		w.Write(content)
+		tmp.Execute(w, ctx)
 	}//-- end return for existing file
 }//-- end func cacheFileServer
 
