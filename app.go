@@ -61,8 +61,8 @@ type Handler interface {
 }//-- end Handler interface
 
 type Webapp struct {
-	server *http.Server//-- use *ServeMux as handler
-	mux Handler
+	server Server
+	handler Handler//-- will go into server
 	middleware []Middleware
 	db Database
 }//-- end Webapp struct
@@ -73,7 +73,7 @@ func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filename)
 	/*
 	handler := wapputils.CacheFileServer(filename)
-	app.mux.HandleFunc(r.URL.Path, handler)
+	app.handler.HandleFunc(r.URL.Path, handler)
 	handler(w, r)
 	*/
 }//-- end Webapp.serveStatic
@@ -100,7 +100,7 @@ type Controller func(http.ResponseWriter, *http.Request, ReqData)
 type View func(http.ResponseWriter, *http.Request, ReqData)
 
 func (app *Webapp) HandleFunc(path string, handler http.HandlerFunc) {
-	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	app.handler.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if app.handleMiddleware(w, r, make(ReqData)) { handler(w, r) }
 	})
 }//-- end func Webapp.HandleFunc
@@ -152,7 +152,7 @@ func (app *Webapp) Register(path string, methods *Methods) {
 	if methods.Delete != nil {
 		handleDelete = app.HandleController(methods.Delete)
 	}
-	app.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	app.handler.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		methodName := strings.ToUpper(r.Method)
 		switch (methodName) {
 			case "GET":
@@ -188,7 +188,7 @@ func (app *Webapp) RegisterModels (mods []*model.Definition) (err error) {
 }//-- end Webapp.RegisterModels
 
 func (app *Webapp) ListenAndServe() error {
-	log.Printf("Server listening at %s...\n", app.server.Addr)
+	log.Printf("Server listening at %s...\n", app.server.GetAddr())
 	return app.server.ListenAndServe()
 }//-- end func Webapp.ListenAndServe
 
@@ -196,7 +196,8 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 	return app.server.Shutdown(ctx)
 }//-- end func Webapp.Shutdown
 
-func Init (config *Config, handler Handler, db Database) (*Webapp, error) {
+func Init (config *Config, svr Server, handler Handler,
+		db Database) (*Webapp, error) {
 	var err error
 	app := new(Webapp)
 	app.db = db
@@ -205,11 +206,13 @@ func Init (config *Config, handler Handler, db Database) (*Webapp, error) {
 		return nil, err
 	}
 	app.middleware = make([]Middleware, 0)
-	app.mux = handler
+	app.handler = handler
 	ctx := struct { Static string }{ Static: config.StaticDir }
-	app.mux.HandleFunc("/", wapputils.CacheFileServer(config.Index, &ctx))
-	app.mux.HandleFunc(config.StaticDir, app.serveStatic)
-	app.server = &http.Server{Addr: config.Port, Handler: app.mux}
+	app.handler.HandleFunc("/", wapputils.CacheFileServer(config.Index, &ctx))
+	app.handler.HandleFunc(config.StaticDir, app.serveStatic)
+	svr.SetAddr(config.Port)
+	svr.SetHandler(app.handler)
+	app.server = svr
 	return app, nil
 }//-- end func Init
 
