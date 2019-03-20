@@ -9,7 +9,7 @@ import (
 	// database driver
 	_"github.com/ziutek/mymysql/godrv"
 	// local imports
-	"github.com/ollykel/webapp/app"
+	app "github.com/ollykel/webapp"
 	"github.com/ollykel/webapp/model"
 )
 

@@ -5,7 +5,7 @@
  * using a js framework such as React
  */
 
-package app
+package webapp
 
 import (
 	"os"

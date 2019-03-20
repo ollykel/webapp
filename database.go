@@ -1,4 +1,4 @@
-package app
+package webapp
 
 /**
  * @author Oliver Kelton, oakelton@gmail.com
