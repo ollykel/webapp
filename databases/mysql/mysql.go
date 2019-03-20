@@ -9,8 +9,8 @@ import (
 	// database driver
 	_"github.com/ziutek/mymysql/godrv"
 	// local imports
-	"github.com/ollykel/webapp/webapp"
-	"github.com/ollykel/webapp/webapp/model"
+	"github.com/ollykel/webapp/app"
+	"github.com/ollykel/webapp/model"
 )
 
 const (
@@ -26,7 +26,7 @@ type Database struct {
 	pool *sql.DB
 }//-- end Database struct
 
-func (db *Database) Init (cfg *webapp.DatabaseConfig) (err error) {
+func (db *Database) Init (cfg *app.DatabaseConfig) (err error) {
 	dataSource := fmt.Sprintf(dataSourceFmt, cfg.DatabaseName,
 		cfg.Username, cfg.Password)
 	db.pool, err = sql.Open(driverName, dataSource)

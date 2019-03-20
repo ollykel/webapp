@@ -1,4 +1,4 @@
-package webapp
+package app
 
 /**
  * @author Oliver Kelton, oakelton@gmail.com
@@ -11,7 +11,7 @@ package webapp
  */
 
 import (
-	"github.com/ollykel/webapp/webapp/model"
+	"github.com/ollykel/webapp/model"
 )
 
 type DatabaseConfig struct {

@@ -5,7 +5,7 @@
  * using a js framework such as React
  */
 
-package webapp
+package app
 
 import (
 	"os"
@@ -16,8 +16,8 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
-	"github.com/ollykel/webapp/webapp/wapputils"
-	"github.com/ollykel/webapp/webapp/model"
+	"github.com/ollykel/webapp/wapputils"
+	"github.com/ollykel/webapp/model"
 )
 
 type Config struct {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"encoding/json"
 	// local imports
-	"github.com/ollykel/webapp/webapp/model"
+	"github.com/ollykel/webapp/model"
 )
 
 /**
