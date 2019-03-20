@@ -21,9 +21,9 @@ import (
 )
 
 type Config struct {
-	Port string
 	Index string
 	StaticDir string
+	Server ServerConfig//-- see server.go
 	Database DatabaseConfig//-- see database.go
 }
 
@@ -189,7 +189,7 @@ func (app *Webapp) RegisterModels (mods []*model.Definition) (err error) {
 
 func (app *Webapp) ListenAndServe() error {
 	log.Printf("Server listening at %s...\n", app.server.GetAddr())
-	return app.server.ListenAndServe()
+	return app.server.Serve()
 }//-- end func Webapp.ListenAndServe
 
 func (app *Webapp) Shutdown(ctx context.Context) error {
@@ -208,10 +208,11 @@ func Init (config *Config, svr Server, handler Handler,
 	app.middleware = make([]Middleware, 0)
 	app.handler = handler
 	ctx := struct { Static string }{ Static: config.StaticDir }
-	app.handler.HandleFunc("/", wapputils.CacheFileServer(config.Index, &ctx))
+	indexHandler := wapputils.CacheFileServer(config.Index, &ctx)
+	app.handler.HandleFunc("/", indexHandler)
 	app.handler.HandleFunc(config.StaticDir, app.serveStatic)
-	svr.SetAddr(config.Port)
-	svr.SetHandler(app.handler)
+	err = svr.Init(&config.Server, app.handler)
+	if err != nil { return nil, err }
 	app.server = svr
 	return app, nil
 }//-- end func Init
