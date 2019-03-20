@@ -6,6 +6,7 @@ import (
 	"strings"
 	"encoding/json"
 	"html/template"
+	"bytes"
 )
 
 var (
@@ -45,12 +46,22 @@ func SetFileType(filename string) string {
 
 func CacheFileServer (filename string, ctx interface{}) http.HandlerFunc {
 	tmp, err := template.ParseFiles(filename)
-	if err != nil { return http.NotFound }
+	if err != nil {
+		log.Print(err.Error())
+		return http.NotFound
+	}
+	content := bytes.Buffer{}
+	err = tmp.Execute(&content, ctx)
+	if err != nil {
+		log.Print(err.Error())
+		return http.NotFound
+	}
+	output := content.Bytes()
 	fileType := SetFileType(filename)
 	return func(w http.ResponseWriter, r *http.Request) {
 		// log.Printf("cached server: %s\n", r.URL.Path)
 		w.Header().Set("Content-Type", fileType)
-		tmp.Execute(w, ctx)
+		w.Write(output)
 	}//-- end return for existing file
 }//-- end func cacheFileServer
 
