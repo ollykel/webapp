@@ -202,9 +202,8 @@ func Init (config *Config, svr Server, handler Handler,
 	app := new(Webapp)
 	app.db = db
 	err = db.Init(&config.Database)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
+	log.Print("Database reached successfully")
 	app.middleware = make([]Middleware, 0)
 	app.handler = handler
 	ctx := struct { Static string }{ Static: config.StaticDir }
@@ -213,6 +212,7 @@ func Init (config *Config, svr Server, handler Handler,
 	app.handler.HandleFunc(config.StaticDir, app.serveStatic)
 	err = svr.Init(&config.Server, app.handler)
 	if err != nil { return nil, err }
+	log.Print("Server initialized successfully")
 	app.server = svr
 	return app, nil
 }//-- end func Init
