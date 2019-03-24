@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	driverName = "mysql"
+	driverName = "mymysql"
 	dataSourceFmt = "%s:%s*%s/%s/%s"
 	//-- Protocol:Address*DatabaseName/Username/Password
 	//-- User:Password@Protocol(Address)/DatabaseName
