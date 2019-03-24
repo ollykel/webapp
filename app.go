@@ -27,6 +27,11 @@ type Config struct {
 	Database DatabaseConfig//-- see database.go
 }
 
+func (cfg *Config) String () string {
+	output, _ := json.Marshal(cfg)
+	return string(output)
+}//-- end Config.String
+
 type decoder interface {
 	Decode (interface{}) error
 }//-- end Decoder interface
