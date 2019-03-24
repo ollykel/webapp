@@ -7,15 +7,15 @@ import (
 	"strings"
 	"log"
 	// database driver
-	_"github.com/ziutek/mymysql/godrv"
+	_"github.com/go-sql-driver/mysql"
 	// local imports
 	app "github.com/ollykel/webapp"
 	"github.com/ollykel/webapp/model"
 )
 
 const (
-	driverName = "mymysql"
-	dataSourceFmt = "%s/%s/%s"//-- DatabaseName/Username/Password
+	driverName = "mysql"
+	dataSourceFmt = "%s:%s@/%s"//-- User:Password/@DatabaseName
 )
 
 type Scannable interface {
@@ -27,8 +27,8 @@ type Database struct {
 }//-- end Database struct
 
 func (db *Database) Init (cfg *app.DatabaseConfig) error {
-	dataSource := fmt.Sprintf(dataSourceFmt, cfg.DatabaseName,
-		cfg.Username, cfg.Password)
+	dataSource := fmt.Sprintf(dataSourceFmt, cfg.Username,
+		cfg.Password, cfg.DatabaseName)
 	db.pool, err := sql.Open(driverName, dataSource)
 	if err != nil { return err }
 	return db.pool.Ping()
