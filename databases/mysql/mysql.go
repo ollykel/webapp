@@ -1,5 +1,12 @@
 package mysql
 
+/**
+ * @author Oliver Kelton, oakelton@gmail.com
+ * @date Mar 24, 2019
+ * @dependency github.com/ziutek/mymysql/godrv
+ * Database wrapper for mysql that satisfies webapp's Database interface.
+ */
+
 import (
 	"database/sql"
 	"fmt"
