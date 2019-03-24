@@ -7,7 +7,7 @@ import (
 	"strings"
 	"log"
 	// database driver
-	_"github.com/go-sql-driver/mysql"
+	_"github.com/ziutek/mymysql/godrv"
 	// local imports
 	app "github.com/ollykel/webapp"
 	"github.com/ollykel/webapp/model"
@@ -15,7 +15,9 @@ import (
 
 const (
 	driverName = "mysql"
-	dataSourceFmt = "%s:%s@%s/%s"//-- User:Password@URI/DatabaseName
+	dataSourceFmt = "%s:%s*%s/%s/%s"
+	//-- Protocol:Address*DatabaseName/Username/Password
+	//-- User:Password@Protocol(Address)/DatabaseName
 )
 
 type Scannable interface {
@@ -27,8 +29,8 @@ type Database struct {
 }//-- end Database struct
 
 func (db *Database) Init (cfg *app.DatabaseConfig) (err error) {
-	dataSource := fmt.Sprintf(dataSourceFmt, cfg.Username, cfg.Password,
-		cfg.URI, cfg.DatabaseName)
+	dataSource := fmt.Sprintf(dataSourceFmt, cfg.Protocol, cfg.Address,
+		cfg.DatabaseName, cfg.Username, cfg.Password)
 	db.pool, err = sql.Open(driverName, dataSource)
 	if err != nil { return }
 	err = db.pool.Ping()
