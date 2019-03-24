@@ -26,12 +26,13 @@ type Database struct {
 	pool *sql.DB
 }//-- end Database struct
 
-func (db *Database) Init (cfg *app.DatabaseConfig) error {
+func (db *Database) Init (cfg *app.DatabaseConfig) (err error) {
 	dataSource := fmt.Sprintf(dataSourceFmt, cfg.Username,
 		cfg.Password, cfg.DatabaseName)
-	db.pool, err := sql.Open(driverName, dataSource)
-	if err != nil { return err }
-	return db.pool.Ping()
+	db.pool, err = sql.Open(driverName, dataSource)
+	if err != nil { return }
+	err = db.pool.Ping()
+	return
 }//-- end func initDatabase
 
 func parseQuery(query string, md *model.Definition) string {
