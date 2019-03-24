@@ -102,6 +102,9 @@ func (db *Database) TableExists (name string) bool {
 	row := db.pool.QueryRow("SHOW TABLES LIKE ?", name)
 	table := ""
 	err := row.Scan(&table)
+	if err != nil {
+		log.Print(err.Error())
+	}
 	return err == nil && table != ""
 }//-- end Database.TableExists
 
