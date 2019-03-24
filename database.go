@@ -15,6 +15,7 @@ import (
 )
 
 type DatabaseConfig struct {
+	URI string
 	DatabaseName string
 	Username string
 	Password string

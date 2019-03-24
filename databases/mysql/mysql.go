@@ -15,7 +15,7 @@ import (
 
 const (
 	driverName = "mysql"
-	dataSourceFmt = "%s:%s@/%s"//-- User:Password/@DatabaseName
+	dataSourceFmt = "%s:%s@%s/%s"//-- User:Password@URI/DatabaseName
 )
 
 type Scannable interface {
@@ -27,8 +27,8 @@ type Database struct {
 }//-- end Database struct
 
 func (db *Database) Init (cfg *app.DatabaseConfig) (err error) {
-	dataSource := fmt.Sprintf(dataSourceFmt, cfg.Username,
-		cfg.Password, cfg.DatabaseName)
+	dataSource := fmt.Sprintf(dataSourceFmt, cfg.Username, cfg.Password,
+		cfg.URI, cfg.DatabaseName)
 	db.pool, err = sql.Open(driverName, dataSource)
 	if err != nil { return }
 	err = db.pool.Ping()
