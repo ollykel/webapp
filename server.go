@@ -14,13 +14,13 @@ import (
 
 type ServerConfig struct {
 	Port string
-	TCPEnabled bool
+	TLSEnabled bool
 	CertFile, KeyFile string
 }//-- end ServerConfig struct
 
 func (cfg *ServerConfig) Validate () error {
-	if cfg.TCPEnabled && (cfg.CertFile == "" || cfg.KeyFile == "") {
-		return errors.New("TCPEnabled, but CertFile or KeyFile not given")
+	if cfg.TLSEnabled && (cfg.CertFile == "" || cfg.KeyFile == "") {
+		return errors.New("TLSEnabled, but CertFile or KeyFile not given")
 	}
 	return nil
 }//-- end DefaultServer.Validate
@@ -36,7 +36,7 @@ type Server interface {
 // Wrapper for default net/http Server, to satisfy interface
 type DefaultServer struct {
 	http.Server
-	tcpEnabled bool
+	tlsEnabled bool
 	certFile, keyFile string
 }//-- end DefaultServer struct
 
@@ -47,8 +47,8 @@ func (svr *DefaultServer) Init (cfg *ServerConfig, handler Handler) error {
 	if err != nil { return err }
 	svr.Addr = cfg.Port
 	svr.Handler = handler
-	svr.tcpEnabled = cfg.TCPEnabled
-	if cfg.TCPEnabled {
+	svr.tlsEnabled = cfg.TLSEnabled
+	if cfg.TLSEnabled {
 		svr.certFile, svr.keyFile = cfg.CertFile, cfg.KeyFile
 	}
 	return nil
@@ -59,7 +59,7 @@ func (svr *DefaultServer) GetAddr () string {
 }//-- end func DefaultServer.GetAddr
 
 func (svr *DefaultServer) Serve () error {
-	if svr.tcpEnabled {
+	if svr.tlsEnabled {
 		return svr.ListenAndServeTLS(svr.certFile, svr.keyFile)
 	}
 	return svr.ListenAndServe()
