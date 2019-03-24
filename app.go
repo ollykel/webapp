@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"time"
 	"github.com/ollykel/webapp/wapputils"
 	"github.com/ollykel/webapp/model"
 )
@@ -23,6 +24,7 @@ import (
 type Config struct {
 	Index string
 	StaticDir string
+	WaitSecs int
 	Server ServerConfig//-- see server.go
 	Database DatabaseConfig//-- see database.go
 }
@@ -202,9 +204,12 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 }//-- end func Webapp.Shutdown
 
 func Init (config *Config, svr Server, handler Handler,
-		db Database) (*Webapp, error) {
-	var err error
-	app := new(Webapp)
+		db Database) (app *Webapp, err error) {
+	if config.WaitSecs > 0 {
+		log.Printf("Waiting %d seconds...", config.WaitSecs)
+		time.Sleep(time.Duration(config.WaitSecs) * time.Second)
+	}
+	app = new(Webapp)
 	app.db = db
 	err = db.Init(&config.Database)
 	if err != nil { return nil, err }
