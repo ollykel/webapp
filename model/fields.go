@@ -6,36 +6,56 @@ import (
 	"strings"
 )
 
-type FieldType int
+type fieldType int
 
-// FieldType enums
+// fieldType enums
 const (
-	Integer FieldType = 1
-	Int FieldType = 1 << 1
-	TinyInt FieldType = 1 << 2
-	SmallInt FieldType = 1 << 3
-	BigInt FieldType = 1 << 4
-	Char FieldType = 1 << 5
-	Varchar FieldType = 1 << 6
-	Text FieldType = 1 << 7
-	TinyText FieldType = 1 << 8
-	MediumText FieldType = 1 << 9
-	LongText FieldType = 1 << 10
-	Blob FieldType = 1 << 11
-	Binary FieldType = Blob
-	TinyBlob FieldType = 1 << 12
-	MediumBlob FieldType = 1 << 13
-	LongBlob FieldType = 1 << 14
-	Datetime FieldType = 1 << 15
+	Integer fieldType = 1
+	Int fieldType = 1 << 1
+	TinyInt fieldType = 1 << 2
+	SmallInt fieldType = 1 << 3
+	BigInt fieldType = 1 << 4
+	Char fieldType = 1 << 5
+	Varchar fieldType = 1 << 6
+	Text fieldType = 1 << 7
+	TinyText fieldType = 1 << 8
+	MediumText fieldType = 1 << 9
+	LongText fieldType = 1 << 10
+	Blob fieldType = 1 << 11
+	Binary fieldType = Blob
+	TinyBlob fieldType = 1 << 12
+	MediumBlob fieldType = 1 << 13
+	LongBlob fieldType = 1 << 14
+	Datetime fieldType = 1 << 15
+	JSON fieldType = 1 << 16
+	Decimal fieldType = 1 << 17
+	Numeric fieldType = 1 << 18
+	Float fieldType = 1 << 19
+	Double fieldType = 1 << 20
+	Bit fieldType = 1 << 21
+	Date fieldType = 1 << 22
+	Timestamp fieldType = 1 << 23
+	Time fieldType = 1 << 24
+	Year fieldType = 1 << 25
+	Binary fieldType = 1 << 26
+	VarBinary fieldType = 1 << 27
+	Geometry fieldType = 1 << 28
+	Point fieldType = 1 << 29
+	LineString fieldType = 1 << 30
+	Polygon fieldType = 1 << 31
+	MultiPoint fieldType = 1 << 32
+	MultiLineString fieldType = 1 << 33
+	MultiPolygon fieldType = 1 << 34
+	GeometryCollection fieldType = 1 << 35
 	// Type Categories
-	integerType FieldType = (Integer | Int | TinyInt | SmallInt | BigInt)
-	lengthedType FieldType = (Char | Varchar)
-)//-- end FieldType enums
+	integerType fieldType = (Integer | Int | TinyInt | SmallInt | BigInt)
+	lengthedType fieldType = (Char | Varchar)
+)//-- end fieldType enums
 
-func (ft FieldType) getName () (string, error) {
+func (ft fieldType) getName () (string, error) {
 	switch (ft) {
 		case 0:
-			return "", errors.New("FieldType cannot be zero")
+			return "", errors.New("fieldType cannot be zero")
 		case Integer, Int:
 			return "INT", nil
 		case TinyInt:
@@ -66,12 +86,15 @@ func (ft FieldType) getName () (string, error) {
 			return "LONGBLOB", nil
 		case Datetime:
 			return "DATETIME", nil
+		case JSON:
+			return "JSON", nil
+		//-- TODO: complete all cases
 		default:
-			return "", fmt.Errorf("unrecognized FieldType (%d)", ft)
+			return "", fmt.Errorf("unrecognized fieldType (%d)", ft)
 	}//-- end switch
 }//-- end func getFieldName
 
-func (ft FieldType) hasLength () bool { return ft & lengthedType != 0 }
+func (ft fieldType) hasLength () bool { return ft & lengthedType != 0 }
 
 type OnChangeBehavior int
 
@@ -101,7 +124,7 @@ func (beh OnChangeBehavior) getName () (string, error) {
 
 type Field struct {
 	Name string
-	Type FieldType
+	Type fieldType
 	Length int
 	Null, AutoIncrement, Unique bool
 	Reference string
