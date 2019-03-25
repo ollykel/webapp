@@ -22,7 +22,6 @@ const (
 	MediumText fieldType = 1 << 9
 	LongText fieldType = 1 << 10
 	Blob fieldType = 1 << 11
-	Binary fieldType = Blob
 	TinyBlob fieldType = 1 << 12
 	MediumBlob fieldType = 1 << 13
 	LongBlob fieldType = 1 << 14
