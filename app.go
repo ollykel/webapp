@@ -74,17 +74,6 @@ type Webapp struct {
 	db Database
 }//-- end Webapp struct
 
-func (app *Webapp) serveStatic(w http.ResponseWriter, r *http.Request) {
-	log.Printf("serveStatic: %s\n", r.URL.Path)
-	filename := r.URL.Path[1:]
-	http.ServeFile(w, r, filename)
-	/*
-	handler := wapputils.CacheFileServer(filename)
-	app.handler.HandleFunc(r.URL.Path, handler)
-	handler(w, r)
-	*/
-}//-- end Webapp.serveStatic
-
 type ReqData map[string]string
 
 type Middleware func(http.ResponseWriter, *http.Request, ReqData) bool
@@ -219,10 +208,10 @@ func Init (config *Config, svr Server, handler Handler,
 	ctx := struct { Static string }{ Static: config.StaticDir }
 	indexHandler := wapputils.CacheFileServer(config.Index, &ctx)
 	app.handler.HandleFunc("/", indexHandler)
-	app.handler.HandleFunc(config.StaticDir, app.serveStatic)
 	err = svr.Init(&config.Server, app.handler)
 	if err != nil { return nil, err }
 	log.Print("Server initialized successfully")
+	app.handler.HandleFunc(config.StaticDir, svr.ServeStatic)
 	app.server = svr
 	return app, nil
 }//-- end func Init
