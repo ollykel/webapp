@@ -9,18 +9,16 @@ package webapp
 
 import (
 	"os"
-	"fmt"
 	"log"
 	"strings"
 	"net/http"
 	"context"
-	"encoding/json"
-	"encoding/xml"
 	"time"
 	"github.com/ollykel/webapp/wapputils"
 	"github.com/ollykel/webapp/model"
 )
 
+/** see config.go for related funcs
 type Config struct {
 	Index string
 	StaticDir string
@@ -28,38 +26,7 @@ type Config struct {
 	Server ServerConfig//-- see server.go
 	Database DatabaseConfig//-- see database.go
 }
-
-func (cfg *Config) String () string {
-	output, _ := json.Marshal(cfg)
-	return string(output)
-}//-- end Config.String
-
-type decoder interface {
-	Decode (interface{}) error
-}//-- end Decoder interface
-
-func LoadConfig (filename string) (*Config, error) {
-	file, err := os.Open(filename)
-	if err != nil { return nil, err }
-	defer file.Close()
-	path := strings.Split(filename, ".")
-	ext := path[len(path) - 1]
-	var dec decoder
-	switch (ext) {
-		case "json":
-			dec = json.NewDecoder(file)
-			break
-		case "xml":
-			dec = xml.NewDecoder(file)
-			break
-		default:
-			return nil, fmt.Errorf(`Invalid file type "%s"`, ext)
-	}//-- end switch
-	config := new(Config)
-	err = dec.Decode(config)
-	if err != nil { return nil, err }
-	return config, nil
-}//-- end func LoadConfig
+*/
 
 type Handler interface {
 	http.Handler
