@@ -1,10 +1,19 @@
-# Webapp Framework
+# Goapp
 A simple framework for developing webapps in Golang.
 
 ## Design
 The framework expects the project to adhere to a Model-View-Controller
 pattern. A basic skeleton for a project can be found
 [here](https://github.com/ollykel/goapp-skeleton "Goapp Skeleton").
+
+## Dependencies
+The following are required for any build using Goapp:
+- gopkg.in/yaml.v2
+
+The following are the database drivers for each of the provided database
+wrappers in /databases:
+- mysql: github.com/go-sql-driver/mysql
+- mymysql: github.com/ziutek/mymysql/godrv
 
 ### Models
 Each model in a project should be confined to its own sub-package within
