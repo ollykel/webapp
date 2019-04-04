@@ -3,7 +3,8 @@ A simple framework for developing webapps in Golang.
 
 ## Design
 The framework expects the project to adhere to a Model-View-Controller
-pattern. A basic skeleton for a project can be found at [INSERT URL HERE].
+pattern. A basic skeleton for a project can be found
+[here](https://github.com/ollykel/goapp-skeleton "Goapp Skeleton").
 
 ### Models
 Each model in a project should be confined to its own sub-package within
