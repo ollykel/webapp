@@ -8,7 +8,6 @@
 package webapp
 
 import (
-	"os"
 	"log"
 	"strings"
 	"net/http"

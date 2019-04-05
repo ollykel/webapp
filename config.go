@@ -3,6 +3,7 @@ package webapp
 import (
 	"os"
 	"fmt"
+	"strings"
 	"encoding/json"
 	"encoding/xml"
 	// imported packages
