@@ -78,7 +78,12 @@ func makeStaticServer (cfg *ServerConfig) cachedStaticServer {
 	cacheHeader := fmt.Sprintf("max-age=%d", cfg.CacheTimeoutSecs)
 	return func (w http.ResponseWriter, r *http.Request) {
 		log.Printf("serveStatic: %s\n", r.URL.Path)
-		filename := cfg.StaticDir + r.URL.Path
+		var filename string
+		if r.URL.Path == "/" {
+			filename = cfg.StaticDir + "/index.html"
+		} else {
+			filename = cfg.StaticDir + r.URL.Path
+		}
 		w.Header().Set("Cache-Control", cacheHeader)
 		// allows caching for optimized performance
 		//-- particularly important for js bundles
