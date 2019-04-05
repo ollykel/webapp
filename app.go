@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"context"
 	"time"
-	"gopkg.in/ollykel/webapp.v0/wapputils"
 	"gopkg.in/ollykel/webapp.v0/model"
 )
 
