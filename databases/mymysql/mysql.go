@@ -16,8 +16,8 @@ import (
 	// database driver
 	_"github.com/ziutek/mymysql/godrv"
 	// local imports
-	app "github.com/ollykel/webapp"
-	"github.com/ollykel/webapp/model"
+	app "gopkg.in/ollykel/webapp.v0"
+	"gopkg.in/ollykel/webapp.v0/model"
 )
 
 const (
