@@ -171,13 +171,10 @@ func Init (config *Config, svr Server, handler Handler,
 	log.Print("Database reached successfully")
 	app.middleware = make([]Middleware, 0)
 	app.handler = handler
-	ctx := struct { Static string }{ Static: config.StaticDir }
-	indexHandler := wapputils.CacheFileServer(config.Index, &ctx)
-	app.handler.HandleFunc("/", indexHandler)
 	err = svr.Init(&config.Server, app.handler)
 	if err != nil { return nil, err }
 	log.Print("Server initialized successfully")
-	app.handler.HandleFunc(config.StaticDir, svr.ServeStatic)
+	app.handler.HandleFunc("/", svr.ServeStatic)
 	app.server = svr
 	return app, nil
 }//-- end func Init
