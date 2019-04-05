@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"context"
 	"time"
-	"github.com/ollykel/webapp/wapputils"
-	"github.com/ollykel/webapp/model"
+	"gopkg.in/ollykel/webapp.v0/wapputils"
+	"gopkg.in/ollykel/webapp.v0/model"
 )
 
 /** see config.go for related funcs

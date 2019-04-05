@@ -11,7 +11,7 @@ package webapp
  */
 
 import (
-	"github.com/ollykel/webapp/model"
+	"gopkg.in/ollykel/webapp.v0/model"
 )
 
 type DatabaseConfig struct {
