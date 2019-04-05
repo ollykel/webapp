@@ -16,6 +16,7 @@ import (
 
 type ServerConfig struct {
 	Port string
+	StaticDir string
 	TLSEnabled bool
 	CertFile, KeyFile string
 	CacheTimeoutSecs int
@@ -77,7 +78,7 @@ func makeStaticServer (cfg *ServerConfig) cachedStaticServer {
 	cacheHeader := fmt.Sprintf("max-age=%d", cfg.CacheTimeoutSecs)
 	return func (w http.ResponseWriter, r *http.Request) {
 		log.Printf("serveStatic: %s\n", r.URL.Path)
-		filename := r.URL.Path[1:]
+		filename := cfg.StaticDir + r.URL.Path
 		w.Header().Set("Cache-Control", cacheHeader)
 		// allows caching for optimized performance
 		//-- particularly important for js bundles
