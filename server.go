@@ -83,8 +83,8 @@ func makeStaticServer (cfg *ServerConfig) cachedStaticServer {
 			filename = cfg.StaticDir + "/index.html"
 		} else {
 			filename = cfg.StaticDir + r.URL.Path
+			w.Header().Set("Cache-Control", cacheHeader)
 		}
-		w.Header().Set("Cache-Control", cacheHeader)
 		// allows caching for optimized performance
 		//-- particularly important for js bundles
 		http.ServeFile(w, r, filename)
