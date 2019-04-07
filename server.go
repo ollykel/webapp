@@ -99,8 +99,9 @@ func (hm *handlerMap) loadFile (file *os.File, filename string) {
 	}//-- end func
 }//-- end handlerMap.loadFile
 
-func (hm *handlerMap) loadFilesRec (dir *os.File, prefix string) {
+func (hm *handlerMap) loadFilesRec (dir *os.File, dirName, prefix string) {
 	if prefix != "" { prefix += "/" }
+	dirName += "/"
 	fileInfos, _ := dir.Readdir(0)//-- ls directory
 	var (
 		file *os.File
@@ -109,9 +110,9 @@ func (hm *handlerMap) loadFilesRec (dir *os.File, prefix string) {
 	)
 	for _, info := range fileInfos {
 		filename = prefix + info.Name()
-		file, err = os.Open(filename)
+		file, err = os.Open(dirName + filename)
 		if err != nil {
-			log.Print(err.Error())
+			log.Fatal(err.Error())
 			continue
 		}
 		if info.IsDir() {
@@ -123,10 +124,10 @@ func (hm *handlerMap) loadFilesRec (dir *os.File, prefix string) {
 	}//-- end for range fileInfos
 }//-- end func handlerMap.loadFilesRec
 
-func (hm *handlerMap) LoadFiles (dir *os.File) {
+func (hm *handlerMap) LoadFiles (dir *os.File, dirName string) {
 	hm.mut.Lock()
 	defer hm.mut.Unlock()
-	hm.loadFilesRec(dir, "")
+	hm.loadFilesRec(dir, dirName, "")
 }//-- end func handlerMap
 
 func (hm *handlerMap) LoadFilesInterval (dirName string,
@@ -136,7 +137,7 @@ func (hm *handlerMap) LoadFilesInterval (dirName string,
 			staticDir, err := os.Open(dirName)
 			defer staticDir.Close()
 			if err != nil { log.Fatal(err) }
-			hm.LoadFiles(staticDir)
+			hm.LoadFiles(staticDir, dirname)
 			if interv < 1 { break }
 			time.Sleep(interv)
 		}
