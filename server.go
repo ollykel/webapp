@@ -137,7 +137,7 @@ func (hm *handlerMap) LoadFilesInterval (dirName string,
 			staticDir, err := os.Open(dirName)
 			defer staticDir.Close()
 			if err != nil { log.Fatal(err) }
-			hm.LoadFiles(staticDir, dirname)
+			hm.LoadFiles(staticDir, dirName)
 			if interv < 1 { break }
 			time.Sleep(interv)
 		}
