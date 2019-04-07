@@ -116,7 +116,7 @@ func (hm *handlerMap) loadFilesRec (dir *os.File, dirName, prefix string) {
 			continue
 		}
 		if info.IsDir() {
-			hm.loadFilesRec(file, filename)
+			hm.loadFilesRec(file, dirName, filename)
 		} else {
 			hm.loadFile(file, filename)
 		}
