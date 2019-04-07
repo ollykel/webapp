@@ -101,7 +101,7 @@ func (hm *handlerMap) loadFile (file *os.File, filename string) {
 
 func (hm *handlerMap) loadFilesRec (dir *os.File, prefix string) {
 	if prefix != "" { prefix += "/" }
-	fileInfos := dir.Readdir(0)//-- ls directory
+	fileInfos, _ := dir.Readdir(0)//-- ls directory
 	var (
 		file *os.File
 		err error
