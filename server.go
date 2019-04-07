@@ -9,9 +9,12 @@ package webapp
 import (
 	"log"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"context"
 	"errors"
+	"sync"
+	"time"
 )
 
 type ServerConfig struct {
@@ -20,6 +23,7 @@ type ServerConfig struct {
 	TLSEnabled bool
 	CertFile, KeyFile string
 	CacheTimeoutSecs int
+	StaticCacheRefreshSecs int
 }//-- end ServerConfig struct
 
 func (cfg *ServerConfig) Validate () error {
@@ -72,22 +76,93 @@ func (svr *DefaultServer) Serve () error {
 	return svr.ListenAndServe()
 }//-- end func DefaultServer.ListenAndServe
 
+type handlerMap struct {
+	handlers map[string]http.HandlerFunc
+	mut sync.RWMutex
+}//-- end handlerMap struct
+
+func (hm *handlerMap) Get (key string) http.HandlerFunc {
+	hm.mut.RLock()
+	defer hm.mut.RUnlock()
+	return hm.handlers[key]
+}//-- end func handlerMap.Get
+
+func (hm *handlerMap) loadFile (file *os.File, filename string) {
+	content, _ := ioutil.ReadAll(file)
+	contentType := http.DetectContentType(content)
+	hm.handlers["/" + filename] = func (w http.ResponseWriter,
+			_ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", contentType)
+		w.Write(content)
+	}//-- end func
+}//-- end handlerMap.loadFile
+
+func (hm *handlerMap) loadFilesRec (dir *os.File, prefix string) {
+	if prefix != "" { prefix += "/" }
+	fileInfos := dir.Readdir(0)//-- ls directory
+	var file *os.File, err error, filename string
+	for _, info := range fileInfos {
+		filename = prefix + info.Name()
+		file, err = os.Open(filename)
+		if err != nil {
+			log.Print(err.Error())
+			continue
+		}
+		if info.IsDir() {
+			hm.loadFilesRec(file, filename)
+		} else {
+			hm.loadFile(file, filename)
+		}
+		file.Close()
+	}//-- end for range fileInfos
+}//-- end func handlerMap.loadFilesRec
+
+func (hm *handlerMap) LoadFiles (dir *os.File) {
+	hm.mut.Lock()
+	defer hm.mut.Unlock()
+	hm.loadFilesRec(dir, "")
+}//-- end func handlerMap
+
+func (hm *handlerMap) LoadFilesInterval (dirName string,
+		interv time.Duration) {
+	go func() {
+		for {
+			staticDir, err := os.Open(dirName)
+			defer staticDir.Close()
+			if err != nil { log.Fatal(err) }
+			hm.LoadFiles(staticDir)
+			if interv < 1 { break }
+			time.Sleep(interv)
+		}
+	}()
+}//-- end handlerMap.LoadFilesInterval
+
+func initHandlerMap () (hm handlerMap) {
+	hm.handlers = make(map[string]http.HandlerFunc)
+	return
+}//-- end func initHandlerMap
+
 type cachedStaticServer func (w http.ResponseWriter, r *http.Request)
 
 func makeStaticServer (cfg *ServerConfig) cachedStaticServer {
+	handlers := initHandlerMap()
+	handlers.LoadFilesInterval(cfg.StaticDir,
+		time.Duration(cfg.StaticCacheRefreshSecs) * time.Second)
 	cacheHeader := fmt.Sprintf("max-age=%d", cfg.CacheTimeoutSecs)
 	return func (w http.ResponseWriter, r *http.Request) {
 		log.Printf("serveStatic: %s\n", r.URL.Path)
-		var filename string
 		if r.URL.Path == "/" {
-			filename = cfg.StaticDir + "/index.html"
-		} else {
-			filename = cfg.StaticDir + r.URL.Path
-			w.Header().Set("Cache-Control", cacheHeader)
+			http.ServeFile(w, r, cfg.StaticDir + "/index.html")
+			return
 		}
-		// allows caching for optimized performance
-		//-- particularly important for js bundles
-		http.ServeFile(w, r, filename)
+		w.Header().Set("Cache-Control", cacheHeader)
+		handler := handlers.Get(r.URL.Path)
+		if handler == nil {
+			http.Error(w, "not found", http.StatusNotFound)
+		} else {
+			handler(w, r)
+		}
 	}//-- end return
 }//-- end func makeStaticServer
 
