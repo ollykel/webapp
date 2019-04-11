@@ -103,6 +103,7 @@ func getFileType (f *os.File, content []byte) string {
 	if lastPeriod > -1 && lastPeriod < len(name) {
 		ext := name[lastPeriod + 1:]
 		fileType := fileTypes[ext]//-- see filetypes.go
+		log.Printf("fileType: %s", fileType)
 		if fileType != "" { return fileType }
 	}
 	return http.DetectContentType(content)
