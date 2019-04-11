@@ -6,6 +6,8 @@ var fileTypes = map[string]string{
 	"txt": "text/plain",
 	"md": "text/markdown",
 	"csv": "text/csv",
+	"css": "style/css",
+	"js": "application/javascript",
 	"pdf": "application/pdf",
 	"json": "application/json",
 	"xml": "application/xml",
