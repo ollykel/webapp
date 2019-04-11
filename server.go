@@ -103,7 +103,6 @@ func getFileType (f *os.File, content []byte) string {
 	if lastPeriod > -1 && lastPeriod < len(name) {
 		ext := name[lastPeriod + 1:]
 		fileType := fileTypes[ext]//-- see filetypes.go
-		log.Printf("%s fileType: %s", name, fileType)
 		if fileType != "" { return fileType }
 	}
 	return http.DetectContentType(content)
@@ -116,6 +115,7 @@ func (hm *handlerMap) loadFile (file *os.File, filename string) {
 			_ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", contentType)
+		log.Printf("Sending %s as %s...", filename, contentType)
 		w.Write(content)
 	}//-- end func
 }//-- end handlerMap.loadFile
