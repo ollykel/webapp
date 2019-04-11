@@ -94,9 +94,22 @@ func (hm *handlerMap) Get (key string) http.HandlerFunc {
 	return hm.handlers[key]
 }//-- end func handlerMap.Get
 
+func getFileType (f *os.File, content []byte) string {
+	info, err := f.Stat()
+	if err != nil { log.Fatal(err.Error()) }
+	name := info.Name()
+	lastPeriod := strings.LastIndexByte(name, '.')
+	if lastPeriod > -1 && lastPeriod < len(name) {
+		ext := name[lastPeriod + 1:]
+		fileType := fileTypes[ext]//-- see filetypes.go
+		if fileType != "" { return fileType }
+	}
+	return http.DetectContentType(content)
+}//-- end func getFileType
+
 func (hm *handlerMap) loadFile (file *os.File, filename string) {
 	content, _ := ioutil.ReadAll(file)
-	contentType := http.DetectContentType(content)
+	contentType := getFileType(file, content)
 	hm.handlers["/" + filename] = func (w http.ResponseWriter,
 			_ *http.Request) {
 		w.WriteHeader(http.StatusOK)
