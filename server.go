@@ -113,9 +113,9 @@ func (hm *handlerMap) loadFile (file *os.File, filename string) {
 	contentType := getFileType(file, content)
 	hm.handlers["/" + filename] = func (w http.ResponseWriter,
 			_ *http.Request) {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", contentType)
 		log.Printf("Sending %s as %s...", filename, contentType)
+		w.WriteHeader(http.StatusOK)
 		w.Write(content)
 	}//-- end func
 }//-- end handlerMap.loadFile
