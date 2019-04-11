@@ -28,8 +28,14 @@ type ServerConfig struct {
 }//-- end ServerConfig struct
 
 func (cfg *ServerConfig) Validate () error {
+	if cfg.Port == "" {
+		return errors.New("No Port provided to ServerConfig")
+	}
 	if cfg.TLSEnabled && (cfg.CertFile == "" || cfg.KeyFile == "") {
 		return errors.New("TLSEnabled, but CertFile or KeyFile not given")
+	}
+	if cfg.StaticDir == "" {
+		return errors.New("No StaticDir provided to ServerConfig")
 	}
 	return nil
 }//-- end DefaultServer.Validate
