@@ -111,13 +111,16 @@ func getFileType (f *os.File, content []byte) string {
 func (hm *handlerMap) loadFile (file *os.File, filename string) {
 	content, _ := ioutil.ReadAll(file)
 	contentType := getFileType(file, content)
-	hm.handlers["/" + filename] = func (w http.ResponseWriter,
-			_ *http.Request) {
+	handler := func (w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", contentType)
-		log.Printf("Sending %s as %s...", filename, contentType)
 		w.WriteHeader(http.StatusOK)
 		w.Write(content)
 	}//-- end func
+	hm.handlers["/" + filename] = handler
+	if contentType == "text/html" {
+		filename = strings.Replace(filename, ".html", "", -1)
+		hm.handlers["/" + filename] = handler
+	}
 }//-- end handlerMap.loadFile
 
 func (hm *handlerMap) loadFilesRec (dir *os.File, dirName, prefix string) {
