@@ -167,15 +167,15 @@ func Init (config *Config, svr Server, handler Handler,
 	app.waitSecs = config.WaitSecs
 	app.db = db
 	err = db.Init(&config.Database)
-	if err != nil { return nil, err }
+	if err != nil { return }
 	log.Print("Database reached successfully")
 	app.middleware = make([]Middleware, 0)
 	app.handler = handler
 	err = svr.Init(&config.Server, app.handler)
-	if err != nil { return nil, err }
+	if err != nil { return }
 	log.Print("Server initialized successfully")
 	app.handler.HandleFunc("/", svr.ServeStatic)
 	app.server = svr
-	return app, nil
+	return
 }//-- end func Init
 
