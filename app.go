@@ -37,6 +37,7 @@ type Webapp struct {
 	handler Handler//-- will go into server
 	middleware []Middleware
 	db Database
+	waitSecs time.Duration
 }//-- end Webapp struct
 
 type ReqData map[string]string
@@ -149,6 +150,10 @@ func (app *Webapp) RegisterModels (mods []*model.Definition) (err error) {
 }//-- end Webapp.RegisterModels
 
 func (app *Webapp) ListenAndServe() error {
+	if app.waitSecs > 0 {
+		log.Printf("Waiting %d seconds...", app.waitSecs)
+		time.Sleep(app.waitSecs * time.Second)
+	}
 	log.Printf("Server listening at %s...\n", app.server.GetAddr())
 	return app.server.Serve()
 }//-- end func Webapp.ListenAndServe
@@ -158,12 +163,8 @@ func (app *Webapp) Shutdown(ctx context.Context) error {
 }//-- end func Webapp.Shutdown
 
 func Init (config *Config, svr Server, handler Handler,
-		db Database) (app *Webapp, err error) {
-	if config.WaitSecs > 0 {
-		log.Printf("Waiting %d seconds...", config.WaitSecs)
-		time.Sleep(time.Duration(config.WaitSecs) * time.Second)
-	}
-	app = new(Webapp)
+		db Database) (app Webapp, err error) {
+	app.waitSecs = config.WaitSecs
 	app.db = db
 	err = db.Init(&config.Database)
 	if err != nil { return nil, err }

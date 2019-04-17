@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"strings"
+	"time"
 	"encoding/json"
 	"encoding/xml"
 	// imported packages
@@ -13,7 +14,7 @@ import (
 type Config struct {
 	Index string
 	StaticDir string
-	WaitSecs int
+	WaitSecs time.Duration
 	Server ServerConfig//-- see server.go
 	Database DatabaseConfig//-- see database.go
 }
